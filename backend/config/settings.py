@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     # ManiBook applications
+    "accounts",
     "nails",
 ]
 
@@ -144,6 +145,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # REST API defaults
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
