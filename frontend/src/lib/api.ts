@@ -154,3 +154,57 @@ export function getImageUrl(image: string): string {
 
   return `${backendOrigin}${image}`;
 }
+
+export async function updatePowder(
+  accessToken: string,
+  id: number,
+  powderData: Partial<Powder>
+): Promise<Powder> {
+  const response = await fetch(`${API_BASE_URL}/powders/${id}/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(powderData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function deletePowder(
+  accessToken: string,
+  id: number
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/powders/${id}/`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not delete this powder.");
+  }
+}
+
+export async function deletePowderPhoto(
+  accessToken: string,
+  photoId: number
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/powder-photos/${photoId}/`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not delete this photo.");
+  }
+}

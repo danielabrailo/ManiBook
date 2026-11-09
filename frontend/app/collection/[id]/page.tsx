@@ -10,6 +10,7 @@ import {
   PowderPhoto,
 } from "@/lib/api";
 import { Suspense } from "react";
+import { deletePowder, deletePowderPhoto } from "@/lib/api";
 
 function PowderDetailContent() {
   const params = useParams<{ id: string }>();
@@ -94,9 +95,11 @@ function PowderDetailContent() {
   function PhotoGallery({
     title,
     items,
+    onDelete,
   }: {
     title: string;
     items: PowderPhoto[];
+    onDelete: (id: number) => void;
   }) {
     if (items.length === 0) return null;
 
@@ -115,11 +118,61 @@ function PowderDetailContent() {
               {photo.caption && (
                 <p className="mt-2 text-sm text-gray-500">{photo.caption}</p>
               )}
+              <button
+                onClick={() => onDelete(photo.id)}
+                className="mt-2 text-xs font-medium text-red-600 hover:text-red-800"
+              >
+                Remove photo
+              </button>
             </div>
           ))}
         </div>
       </section>
     );
+  }
+
+  async function handleDeletePowder() {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${powder?.name}"? This cannot be undone.`
+    );
+
+    if (!confirmed || !powder) return;
+
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await deletePowder(token, powder.id);
+      router.push("/collection");
+    } catch {
+      setError("Could not delete this powder. Please try again.");
+    }
+  }
+
+  async function handleDeletePhoto(photoId: number) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this photo?"
+    );
+
+    if (!confirmed) return;
+
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await deletePowderPhoto(token, photoId);
+      setPhotos((previous) => previous.filter((photo) => photo.id !== photoId));
+    } catch {
+      setError("Could not delete this photo.");
+    }
   }
 
   return (
@@ -163,6 +216,22 @@ function PowderDetailContent() {
               <h1 className="mt-2 text-3xl font-semibold text-rose-950">
                 {powder.name}
               </h1>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  onClick={() => router.push(`/collection/${powder.id}/edit`)}
+                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+                >
+                  Edit powder
+                </button>
+
+                <button
+                  onClick={handleDeletePowder}
+                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  Delete powder
+                </button>
+              </div>
 
               {powder.product_code && (
                 <p className="mt-2 text-sm text-gray-500">
@@ -227,9 +296,23 @@ function PowderDetailContent() {
           </div>
         </div>
 
-        <PhotoGallery title="Product photos" items={productPhotos} />
-        <PhotoGallery title="Swatches" items={swatchPhotos} />
-        <PhotoGallery title="Inspiration" items={inspirationPhotos} />
+        <PhotoGallery
+          title="Product photos"
+          items={productPhotos}
+          onDelete={handleDeletePhoto}
+        />
+
+        <PhotoGallery
+          title="Swatches"
+          items={swatchPhotos}
+          onDelete={handleDeletePhoto}
+        />
+
+        <PhotoGallery
+          title="Inspiration"
+          items={inspirationPhotos}
+          onDelete={handleDeletePhoto}
+        />
 
         {photos.length === 0 && (
           <p className="mt-8 text-center text-sm text-gray-500">

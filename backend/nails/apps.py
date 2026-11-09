@@ -2,4 +2,8 @@ from django.apps import AppConfig
 
 
 class NailsConfig(AppConfig):
-    name = 'nails'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "nails"
+
+    def ready(self):
+        from . import signals
