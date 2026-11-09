@@ -1,8 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Powder
-from .serializers import PowderSerializer
+from .models import Powder, PowderPhoto
+from .serializers import PowderSerializer, PowderPhotoSerializer
 
 
 class PowderViewSet(viewsets.ModelViewSet):
@@ -22,3 +22,12 @@ class PowderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Powder.objects.filter(owner=self.request.user)
+
+class PowderPhotoViewSet(viewsets.ModelViewSet):
+    serializer_class = PowderPhotoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return PowderPhoto.objects.filter(
+            powder__owner=self.request.user
+        ).select_related("powder")

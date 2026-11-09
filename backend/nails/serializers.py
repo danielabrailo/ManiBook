@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Powder, Manicure
+from .models import Powder, Manicure, PowderPhoto
 
 
 class PowderSerializer(serializers.ModelSerializer):
@@ -61,3 +61,42 @@ class ManicureSerializer(serializers.ModelSerializer):
             })
 
         return attrs
+
+class PowderPhotoSerializer(serializers.ModelSerializer):
+    powder = serializers.PrimaryKeyRelatedField(
+        queryset=Powder.objects.none()
+    )
+
+    class Meta:
+        model = PowderPhoto
+        fields = [
+            "id",
+            "powder",
+            "image",
+            "photo_type",
+            "caption",
+            "is_primary",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated:
+            fields["powder"].queryset = Powder.objects.filter(
+                owner=request.user
+            )
+
+        return fields
+
+    def validate_image(self, image):
+        max_size = 5 * 1024 * 1024  # 5 MB
+
+        if image.size > max_size:
+            raise serializers.ValidationError(
+                "Image size cannot exceed 5 MB."
+            )
+
+        return image

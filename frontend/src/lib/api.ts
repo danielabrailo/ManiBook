@@ -42,3 +42,54 @@ export async function getPowders(accessToken: string): Promise<Powder[]> {
   // DRF returns an array by default unless pagination is configured.
   return Array.isArray(data) ? data : data.results;
 }
+
+export async function createPowder(
+  accessToken: string,
+  powderData: Omit<Powder, "id" | "created_at" | "updated_at">
+): Promise<Powder> {
+  const response = await fetch(`${API_BASE_URL}/powders/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(powderData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function uploadPowderPhoto(
+  accessToken: string,
+  powderId: number,
+  image: File,
+  photoType: "product" | "swatch" | "inspiration" = "product"
+) {
+  const formData = new FormData();
+
+  formData.append("powder", String(powderId));
+  formData.append("image", image);
+  formData.append("photo_type", photoType);
+  formData.append("caption", "");
+  formData.append("is_primary", "true");
+
+  const response = await fetch(`${API_BASE_URL}/powder-photos/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}

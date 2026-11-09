@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getPowders, Powder } from "@/lib/api";
 
+import Link from "next/link";
+
 export default function CollectionPage() {
   const router = useRouter();
 
@@ -94,6 +96,12 @@ export default function CollectionPage() {
           <p className="mt-2 text-sm text-[#8C7C82]">
             Add your first powder and start organising your shades.
           </p>
+          <Link
+            href="/collection/new"
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+          >
+            + Add powder
+          </Link>
         </section>
       ) : (
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -129,6 +137,12 @@ export default function CollectionPage() {
               </div>
             </article>
           ))}
+          <Link
+            href="/collection/new"
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+          >
+            + Add powder
+          </Link>
         </section>
       )}
     </main>
