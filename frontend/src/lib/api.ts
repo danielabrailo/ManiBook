@@ -27,29 +27,50 @@ export interface PowderPhoto {
   created_at: string;
 }
 
-export async function getPowders(accessToken: string): Promise<Powder[]> {
-  if (!API_BASE_URL) {
-    throw new Error("API URL is not configured.");
+export interface PowderFilters {
+  search?: string;
+  colour_family?: string;
+  finish?: string;
+  intensity?: string;
+  undertone?: string;
+  is_favourite?: boolean;
+  ordering?: string;
+}
+
+export async function getPowders(
+  accessToken: string,
+  filters: PowderFilters = {}
+): Promise<Powder[]> {
+  const params = new URLSearchParams();
+
+  if (filters.search) params.set("search", filters.search);
+  if (filters.colour_family) params.set("colour_family", filters.colour_family);
+  if (filters.finish) params.set("finish", filters.finish);
+  if (filters.intensity) params.set("intensity", filters.intensity);
+  if (filters.undertone) params.set("undertone", filters.undertone);
+
+  if (filters.is_favourite) {
+    params.set("is_favourite", "true");
   }
 
-  const response = await fetch(`${API_BASE_URL}/powders/`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
+  if (filters.ordering) params.set("ordering", filters.ordering);
 
-  if (response.status === 401) {
-    throw new Error("Your session has expired. Please sign in again.");
-  }
+  const response = await fetch(
+    `${API_BASE_URL}/powders/?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to load powders (${response.status}).`);
+    throw new Error("Could not load powders.");
   }
 
   const data = await response.json();
 
-  // DRF returns an array by default unless pagination is configured.
   return Array.isArray(data) ? data : data.results;
 }
 
