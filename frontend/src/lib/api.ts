@@ -17,6 +17,16 @@ export interface Powder {
   updated_at: string;
 }
 
+export interface PowderPhoto {
+  id: number;
+  powder: number;
+  image: string;
+  photo_type: "product" | "swatch" | "inspiration";
+  caption: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
 export async function getPowders(accessToken: string): Promise<Powder[]> {
   if (!API_BASE_URL) {
     throw new Error("API URL is not configured.");
@@ -92,4 +102,55 @@ export async function uploadPowderPhoto(
   }
 
   return response.json();
+}
+
+export async function getPowder(
+  accessToken: string,
+  id: number
+): Promise<Powder> {
+  const response = await fetch(`${API_BASE_URL}/powders/${id}/`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not load this powder.");
+  }
+
+  return response.json();
+}
+
+export async function getPowderPhotos(
+  accessToken: string,
+  powderId: number
+): Promise<PowderPhoto[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/powder-photos/?powder=${powderId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load powder photos.");
+  }
+
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : data.results;
+}
+
+export function getImageUrl(image: string): string {
+  if (image.startsWith("http")) {
+    return image;
+  }
+
+  const backendOrigin = new URL(API_BASE_URL).origin;
+
+  return `${backendOrigin}${image}`;
 }

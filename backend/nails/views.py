@@ -26,6 +26,7 @@ class PowderViewSet(viewsets.ModelViewSet):
 class PowderPhotoViewSet(viewsets.ModelViewSet):
     serializer_class = PowderPhotoSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ["powder", "photo_type"]
 
     def get_queryset(self):
         return PowderPhoto.objects.filter(

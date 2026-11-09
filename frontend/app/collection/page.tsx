@@ -134,6 +134,12 @@ export default function CollectionPage() {
                     ♥ Favourite
                   </span>
                 )}
+                <Link
+                  href={`/collection/${powder.id}`}
+                  className="mt-3 inline-block text-sm font-medium text-rose-600 hover:text-rose-800"
+                >
+                  View details →
+                </Link>
               </div>
             </article>
           ))}
