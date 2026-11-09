@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -21,7 +22,22 @@ class PowderViewSet(viewsets.ModelViewSet):
     ordering_fields = ["name", "brand", "created_at", "updated_at"]
 
     def get_queryset(self):
-        return Powder.objects.filter(owner=self.request.user)
+        primary_photos = PowderPhoto.objects.filter(
+            photo_type=PowderPhoto.PhotoType.PRODUCT,
+            is_primary=True,
+        ).order_by("-created_at", "-id")
+
+        return (
+            Powder.objects
+            .filter(owner=self.request.user)
+            .prefetch_related(
+                Prefetch(
+                    "photos",
+                    queryset=primary_photos,
+                    to_attr="primary_product_photos",
+                )
+            )
+        )
 
 class PowderPhotoViewSet(viewsets.ModelViewSet):
     serializer_class = PowderPhotoSerializer

@@ -3,9 +3,24 @@ from .models import Powder, Manicure, PowderPhoto
 
 
 class PowderSerializer(serializers.ModelSerializer):
+    primary_photo = serializers.SerializerMethodField()
+
     class Meta:
         model = Powder
         exclude = ["owner"]
+
+    def get_primary_photo(self, obj):
+        photos = getattr(obj, "primary_product_photos", [])
+
+        if not photos:
+            return None
+
+        photo = photos[0]
+
+        if not photo.image:
+            return None
+
+        return photo.image.url
 
     def create(self, validated_data):
         validated_data["owner"] = self.context["request"].user

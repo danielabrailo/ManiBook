@@ -15,6 +15,7 @@ export interface Powder {
   notes: string;
   created_at: string;
   updated_at: string;
+  primary_photo: string | null;
 }
 
 export interface PowderPhoto {

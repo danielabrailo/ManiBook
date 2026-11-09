@@ -46,15 +46,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FBF8F3] px-4">
-      <section className="w-full max-w-md rounded-2xl border border-[#EADDE1] bg-white p-8 shadow-sm">
-        <p className="mb-2 text-sm tracking-widest text-[#783B52]">MANIBOOK</p>
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <section className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-sm">
+        <p className="mb-2 text-sm tracking-widest text-lavender">MANIBOOK</p>
 
-        <h1 className="mb-2 text-3xl font-serif text-[#783B52]">
-          Welcome back
-        </h1>
+        <h1 className="mb-2 text-3xl font-serif text-lavender">Welcome back</h1>
 
-        <p className="mb-6 text-sm text-[#8C7C82]">
+        <p className="mb-6 text-sm text-muted">
           Your nail collection, all in one place.
         </p>
 
@@ -69,7 +67,7 @@ export default function LoginPage() {
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg border border-[#EADDE1] p-3 outline-none focus:border-[#C77F98]"
+              className="w-full rounded-lg border border-border p-3 outline-none focus:border-[#C77F98]"
             />
           </div>
 
@@ -84,7 +82,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-[#EADDE1] p-3 outline-none focus:border-[#C77F98]"
+              className="w-full rounded-lg border border-border p-3 outline-none focus:border-[#C77F98]"
             />
           </div>
 

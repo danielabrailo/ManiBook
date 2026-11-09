@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getPowders, Powder, PowderFilters } from "@/lib/api";
+import Image from "next/image";
+import { getImageUrl } from "@/lib/api";
 
 export default function CollectionPage() {
   const router = useRouter();
@@ -106,27 +108,29 @@ export default function CollectionPage() {
     favouritesOnly;
 
   return (
-    <main className="min-h-screen bg-[#FBF8F3] p-6 md:p-10">
+    <main className="min-h-screen bg-background px-5 py-8 md:px-8 md:py-10">
       <header className="mb-8">
-        <p className="text-sm tracking-widest text-[#783B52]">MANIBOOK</p>
+        <p className="text-sm tracking-widest text-blush">
+          YOUR NAIL COLLECTION
+        </p>
 
-        <h1 className="mt-2 text-3xl font-serif text-[#783B52]">
+        <h1 className="mt-2 font-serif text-3xl text-lavender">
           My Collection
         </h1>
 
-        <p className="mt-2 text-[#8C7C82]">
+        <p className="mt-2 text-text-secondary">
           Your shades, your style, your little colour library.
         </p>
       </header>
 
       {/* Collection controls */}
-      <section className="mb-8 rounded-2xl border border-[#EADDE1] bg-white p-5">
+      <section className="mb-8 rounded-2xl border border-border bg-surface p-5 shadow-card">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-serif text-xl text-[#783B52]">Find a shade</h2>
+          <h2 className="font-serif text-xl text-lavender">Find a shade</h2>
 
           <Link
             href="/collection/new"
-            className="inline-block rounded-lg bg-rose-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-rose-700"
+            className="inline-block rounded-lg bg-berry px-4 py-2 text-center text-sm font-medium text-white hover:bg-berry-dark"
           >
             + Add powder
           </Link>
@@ -136,7 +140,7 @@ export default function CollectionPage() {
         <div className="mb-5">
           <label
             htmlFor="powder-search"
-            className="mb-1 block text-sm font-medium text-[#382A30]"
+            className="mb-1 block text-sm font-medium text-text-secondary"
           >
             Search
           </label>
@@ -146,7 +150,7 @@ export default function CollectionPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by shade, brand or product code..."
-            className="w-full rounded-lg border border-[#D8B8C4] bg-[#FFFCFA] px-4 py-2 text-sm text-[#382A30] outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+            className="w-full rounded-lg border border-border-strong bg-surface-elevated px-4 py-2 text-sm text-text outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
           />
         </div>
 
@@ -155,7 +159,7 @@ export default function CollectionPage() {
           <div>
             <label
               htmlFor="colour-filter"
-              className="mb-1 block text-sm font-medium text-[#382A30]"
+              className="mb-1 block text-sm font-medium text-text-secondary"
             >
               Colour family
             </label>
@@ -163,7 +167,7 @@ export default function CollectionPage() {
               id="colour-filter"
               value={colourFamily}
               onChange={(event) => setColourFamily(event.target.value)}
-              className="w-full rounded-lg border border-[#D8B8C4] bg-white px-3 py-2 text-sm text-[#382A30]"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
             >
               <option value="">All colours</option>
               <option value="red">Red</option>
@@ -185,7 +189,7 @@ export default function CollectionPage() {
           <div>
             <label
               htmlFor="finish-filter"
-              className="mb-1 block text-sm font-medium text-[#382A30]"
+              className="mb-1 block text-sm font-medium text-text-secondary"
             >
               Finish
             </label>
@@ -193,7 +197,7 @@ export default function CollectionPage() {
               id="finish-filter"
               value={finish}
               onChange={(event) => setFinish(event.target.value)}
-              className="w-full rounded-lg border border-[#D8B8C4] bg-white px-3 py-2 text-sm text-[#382A30]"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
             >
               <option value="">All finishes</option>
               <option value="solid">Solid</option>
@@ -210,7 +214,7 @@ export default function CollectionPage() {
           <div>
             <label
               htmlFor="intensity-filter"
-              className="mb-1 block text-sm font-medium text-[#382A30]"
+              className="mb-1 block text-sm font-medium text-text-secondary"
             >
               Intensity
             </label>
@@ -218,7 +222,7 @@ export default function CollectionPage() {
               id="intensity-filter"
               value={intensity}
               onChange={(event) => setIntensity(event.target.value)}
-              className="w-full rounded-lg border border-[#D8B8C4] bg-white px-3 py-2 text-sm text-[#382A30]"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
             >
               <option value="">All intensities</option>
               <option value="light">Light</option>
@@ -230,7 +234,7 @@ export default function CollectionPage() {
           <div>
             <label
               htmlFor="undertone-filter"
-              className="mb-1 block text-sm font-medium text-[#382A30]"
+              className="mb-1 block text-sm font-medium text-text-secondary"
             >
               Undertone
             </label>
@@ -238,7 +242,7 @@ export default function CollectionPage() {
               id="undertone-filter"
               value={undertone}
               onChange={(event) => setUndertone(event.target.value)}
-              className="w-full rounded-lg border border-[#D8B8C4] bg-white px-3 py-2 text-sm text-[#382A30]"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
             >
               <option value="">All undertones</option>
               <option value="warm">Warm</option>
@@ -251,7 +255,7 @@ export default function CollectionPage() {
 
         {/* Sorting and favourites */}
         <div className="mt-5 flex flex-col gap-4 border-t border-[#F0E5E9] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex items-center gap-2 text-sm text-[#783B52]">
+          <label className="flex items-center gap-2 text-sm text-text-secondary">
             <input
               type="checkbox"
               checked={favouritesOnly}
@@ -264,7 +268,7 @@ export default function CollectionPage() {
           <div className="flex items-center gap-2">
             <label
               htmlFor="sort-powders"
-              className="whitespace-nowrap text-sm text-[#8C7C82]"
+              className="whitespace-nowrap text-sm text-muted"
             >
               Sort by
             </label>
@@ -272,7 +276,7 @@ export default function CollectionPage() {
               id="sort-powders"
               value={ordering}
               onChange={(event) => setOrdering(event.target.value)}
-              className="rounded-lg border border-[#D8B8C4] bg-white px-3 py-2 text-sm text-[#382A30]"
+              className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
             >
               <option value="-created_at">Recently added</option>
               <option value="created_at">Oldest added</option>
@@ -288,7 +292,7 @@ export default function CollectionPage() {
           <button
             type="button"
             onClick={clearFilters}
-            className="mt-4 text-sm font-medium text-rose-600 hover:text-rose-800"
+            className="mt-4 text-sm font-medium text-blush hover:text-lavender"
           >
             Clear filters
           </button>
@@ -297,27 +301,29 @@ export default function CollectionPage() {
 
       {/* Collection results */}
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-[#8C7C82]">
+        <p className="text-sm text-muted">
           {powders.length} {powders.length === 1 ? "shade" : "shades"}
           {hasActiveFilters ? " found" : " in your collection"}
         </p>
 
         {loading && (
-          <p className="text-xs text-[#8C7C82]">Updating collection...</p>
+          <p className="text-xs text-muted">Updating collection...</p>
         )}
       </div>
 
       {error ? (
-        <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        <p className="rounded-xl border border-danger/30 bg-surface p-4 text-sm text-danger">
+          {error}
+        </p>
       ) : powders.length === 0 && !loading ? (
-        <section className="rounded-2xl border border-dashed border-[#D8B8C4] bg-white p-10 text-center">
-          <h2 className="text-xl font-serif text-[#783B52]">
+        <section className="rounded-2xl border border-dashed border-border-strong bg-surface p-10 text-center">
+          <h2 className="text-xl font-serif text-lavender">
             {hasActiveFilters
               ? "No shades found"
               : "Your collection starts here"}
           </h2>
 
-          <p className="mt-2 text-sm text-[#8C7C82]">
+          <p className="mt-2 text-sm text-muted">
             {hasActiveFilters
               ? "Try changing your search or filters."
               : "Add your first powder and start organising your shades."}
@@ -327,14 +333,14 @@ export default function CollectionPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-5 rounded-lg border border-[#D8B8C4] px-4 py-2 text-sm font-medium text-[#783B52] hover:bg-[#FBF3F6]"
+              className="mt-5 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-lavender hover:bg-[#FBF3F6]"
             >
               Clear filters
             </button>
           ) : (
             <Link
               href="/collection/new"
-              className="mt-5 inline-block rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+              className="mt-5 inline-block rounded-lg bg-berry px-4 py-2 text-sm font-medium text-white hover:bg-berry-dark"
             >
               + Add powder
             </Link>
@@ -343,43 +349,49 @@ export default function CollectionPage() {
       ) : (
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {powders.map((powder) => (
-            <article
+            <Link
               key={powder.id}
-              className="overflow-hidden rounded-2xl border border-[#EADDE1] bg-white shadow-sm"
+              href={`/collection/${powder.id}`}
+              aria-label={`View ${powder.name} details`}
+              className="group overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-border-strong hover:shadow-hover"
             >
-              <div
-                className="aspect-square"
-                style={{
-                  backgroundColor: powder.hex_colour || "#F8EEF1",
-                }}
-                aria-label={`Colour swatch for ${powder.name}`}
-              />
+              <article>
+                <div className="relative aspect-square overflow-hidden bg-[#514B54]">
+                  {powder.primary_photo ? (
+                    <Image
+                      src={getImageUrl(powder.primary_photo)}
+                      alt={`${powder.name} product photo`}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      unoptimized
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <span className="text-sm text-[#BDB5C1]">No picture</span>
+                    </div>
+                  )}
+                </div>
 
-              <div className="p-4">
-                <h2 className="font-medium text-[#382A30]">{powder.name}</h2>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="font-medium text-text">{powder.name}</h2>
 
-                <p className="mt-1 text-sm text-[#8C7C82]">
-                  {powder.brand || "Brand not specified"}
-                </p>
+                    {powder.is_favourite && (
+                      <span className="shrink-0 text-sm text-blush">♥</span>
+                    )}
+                  </div>
 
-                <p className="mt-2 text-xs capitalize text-[#783B52]">
-                  {powder.finish} · {powder.colour_family}
-                </p>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    {powder.brand || "Brand not specified"}
+                  </p>
 
-                {powder.is_favourite && (
-                  <span className="mt-2 inline-block text-sm text-[#783B52]">
-                    ♥ Favourite
-                  </span>
-                )}
-
-                <Link
-                  href={`/collection/${powder.id}`}
-                  className="mt-3 inline-block text-sm font-medium text-rose-600 hover:text-rose-800"
-                >
-                  View details →
-                </Link>
-              </div>
-            </article>
+                  <p className="mt-2 text-xs capitalize text-muted">
+                    {powder.finish} · {powder.colour_family}
+                  </p>
+                </div>
+              </article>
+            </Link>
           ))}
         </section>
       )}

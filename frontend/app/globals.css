@@ -1,9 +1,308 @@
+@import "tailwindcss";
+
+/* =========================================
+   MANIBOOK — DESIGN SYSTEM
+   Dark Berry & Neon Orchid
+========================================= */
+
 :root {
-  --color-blush: #e8b9c8;
-  --color-cream: #fbf8f3;
-  --color-berry: #783b52;
-  --color-petal: #f8eef1;
-  --color-text: #382a30;
-  --color-muted: #8c7c82;
-  --color-border: #eadde1;
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --color-background: #211b25;
+  --color-surface: #2b222f;
+  --color-surface-elevated: #35263b;
+  --color-surface-hover: #403047;
+
+  /* Brand colours */
+  --color-blush: #c76b91;
+  --color-berry: #c76b91;
+  --color-berry-dark: #8f4568;
+  --color-mauve: #9d788f;
+  --color-orchid: #c026d3;
+  --color-lavender: #d8b9e8;
+
+  /* Typography */
+  --color-text: #f5edf3;
+  --color-text-secondary: #c8b9c8;
+  --color-muted: #9d8d9e;
+
+  /* Borders and effects */
+  --color-border: #49394c;
+  --color-border-strong: #654b68;
+  --color-focus: #c026d3;
+
+  /* Status colours */
+  --color-success: #80b99a;
+  --color-warning: #e8b76c;
+  --color-danger: #df8292;
+
+  /* Shadows */
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.16);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.24);
+
+  /* Layout */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 220ms ease;
+}
+
+/* =========================================
+   TAILWIND THEME TOKENS
+========================================= */
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-surface-hover: var(--color-surface-hover);
+
+  --color-blush: var(--color-blush);
+  --color-berry: var(--color-berry);
+  --color-berry-dark: var(--color-berry-dark);
+  --color-mauve: var(--color-mauve);
+  --color-orchid: var(--color-orchid);
+  --color-lavender: var(--color-lavender);
+
+  --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-muted: var(--color-muted);
+
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-focus: var(--color-focus);
+}
+
+/* =========================================
+   GLOBAL RESET
+========================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--color-background);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================
+   TYPOGRAPHY
+========================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+p {
+  color: var(--color-text-secondary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-lavender);
+}
+
+/* =========================================
+   BUTTONS
+========================================= */
+
+button {
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn-primary {
+  background: var(--color-berry);
+  color: #211b25;
+  border: 1px solid var(--color-berry);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #d783a4;
+  border-color: #d783a4;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-mauve);
+}
+
+.btn-accent {
+  background: transparent;
+  color: var(--color-lavender);
+  border: 1px solid var(--color-orchid);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+}
+
+.btn-accent:hover:not(:disabled) {
+  background: rgba(192, 38, 211, 0.1);
+}
+
+/* =========================================
+   FORM ELEMENTS
+========================================= */
+
+input,
+select,
+textarea {
+  width: 100%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font: inherit;
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted);
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--color-border-strong);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.12);
+}
+
+input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--color-orchid);
+}
+
+label {
+  color: var(--color-text-secondary);
+}
+
+/* =========================================
+   CARDS
+========================================= */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.card-interactive {
+  transition: transform var(--transition-normal),
+    border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.card-interactive:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-mauve);
+  box-shadow: var(--shadow-hover);
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-mauve);
+}
+
+/* =========================================
+   SELECTION
+========================================= */
+
+::selection {
+  background: rgba(192, 38, 211, 0.3);
+  color: #ffffff;
+}
+
+/* =========================================
+   ACCESSIBILITY
+========================================= */
+
+:focus-visible {
+  outline: 2px solid var(--color-orchid);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

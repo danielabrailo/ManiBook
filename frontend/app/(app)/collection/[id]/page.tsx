@@ -72,7 +72,7 @@ function PowderDetailContent() {
         <p className="text-red-700">{error || "Powder not found."}</p>
         <button
           onClick={() => router.push("/collection")}
-          className="mt-4 text-rose-600 underline"
+          className="mt-4 text-blush underline"
         >
           Back to collection
         </button>
@@ -180,12 +180,12 @@ function PowderDetailContent() {
       <div className="mx-auto max-w-5xl">
         <button
           onClick={() => router.push("/collection")}
-          className="mb-6 text-sm text-rose-600 hover:text-rose-800"
+          className="mb-6 text-sm text-blush hover:text-lavender"
         >
           ← Back to collection
         </button>
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl bg-surface shadow-sm">
           <div className="grid grid-cols-1 gap-8 p-8 md:grid-cols-2">
             <div>
               {mainPhoto ? (
@@ -201,7 +201,7 @@ function PowderDetailContent() {
                     backgroundColor: powder.hex_colour || "#f4a6b8",
                   }}
                 >
-                  <span className="rounded-lg bg-white/70 px-4 py-2 text-sm text-gray-700">
+                  <span className="rounded-lg bg-surface/70 px-4 py-2 text-sm text-gray-700">
                     No photo uploaded
                   </span>
                 </div>
@@ -220,7 +220,7 @@ function PowderDetailContent() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   onClick={() => router.push(`/collection/${powder.id}/edit`)}
-                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+                  className="rounded-lg bg-berry px-4 py-2 text-sm font-medium text-white hover:bg-berry-dark"
                 >
                   Edit powder
                 </button>
