@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Powder, Manicure, PowderPhoto
+from django.db import transaction
 
 
 class PowderSerializer(serializers.ModelSerializer):
@@ -107,7 +108,7 @@ class PowderPhotoSerializer(serializers.ModelSerializer):
         return fields
 
     def validate_image(self, image):
-        max_size = 5 * 1024 * 1024  # 5 MB
+        max_size = 5 * 1024 * 1024
 
         if image.size > max_size:
             raise serializers.ValidationError(
@@ -115,3 +116,38 @@ class PowderPhotoSerializer(serializers.ModelSerializer):
             )
 
         return image
+
+    @transaction.atomic
+    def create(self, validated_data):
+        is_primary = validated_data.get("is_primary", False)
+
+        if is_primary:
+            PowderPhoto.objects.filter(
+                powder=validated_data["powder"],
+                photo_type=validated_data["photo_type"],
+                is_primary=True,
+            ).update(is_primary=False)
+
+        return super().create(validated_data)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        is_primary = validated_data.get(
+            "is_primary",
+            instance.is_primary,
+        )
+
+        powder = validated_data.get("powder", instance.powder)
+        photo_type = validated_data.get(
+            "photo_type",
+            instance.photo_type,
+        )
+
+        if is_primary:
+            PowderPhoto.objects.filter(
+                powder=powder,
+                photo_type=photo_type,
+                is_primary=True,
+            ).exclude(pk=instance.pk).update(is_primary=False)
+
+        return super().update(instance, validated_data)

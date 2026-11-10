@@ -100,7 +100,8 @@ export async function uploadPowderPhoto(
   accessToken: string,
   powderId: number,
   image: File,
-  photoType: "product" | "swatch" | "inspiration" = "product"
+  photoType: "product" | "swatch" | "inspiration" = "product",
+  isPrimary: boolean = false
 ) {
   const formData = new FormData();
 
@@ -108,7 +109,7 @@ export async function uploadPowderPhoto(
   formData.append("image", image);
   formData.append("photo_type", photoType);
   formData.append("caption", "");
-  formData.append("is_primary", "true");
+  formData.append("is_primary", String(isPrimary));
 
   const response = await fetch(`${API_BASE_URL}/powder-photos/`, {
     method: "POST",
