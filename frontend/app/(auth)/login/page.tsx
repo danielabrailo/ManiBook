@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -11,6 +12,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
+
+  useEffect(() => {
+    setRegistered(
+      new URLSearchParams(window.location.search).get("registered") === "true"
+    );
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +64,12 @@ export default function LoginPage() {
           Your nail collection, all in one place.
         </p>
 
+        {registered && (
+          <p className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-400">
+            Your account was created successfully. You can now sign in.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="mb-1 block text-sm">
@@ -100,6 +114,16 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-muted">
+          Don't have an account?{" "}
+          <Link
+            href="/register"
+            className="font-medium text-lavender transition hover:text-[#C026D3]"
+          >
+            Create an account
+          </Link>
+        </p>
       </section>
     </main>
   );
