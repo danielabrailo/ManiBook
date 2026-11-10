@@ -14,6 +14,7 @@ export default function CollectionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tags, setTags] = useState<Tag[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Collection browsing filters
   const [search, setSearch] = useState("");
@@ -145,6 +146,15 @@ export default function CollectionPage() {
     favouritesOnly ||
     selectedTags.length > 0;
 
+  const activeFilterCount = [
+    colourFamily,
+    finish,
+    intensity,
+    undertone,
+    favouritesOnly,
+    ...selectedTags,
+  ].filter(Boolean).length;
+
   return (
     <main className="min-h-screen bg-background px-5 py-8 md:px-8 md:py-10">
       <header className="mb-8">
@@ -163,233 +173,279 @@ export default function CollectionPage() {
 
       {/* Collection controls */}
       <section className="mb-8 rounded-2xl border border-border bg-surface p-5 shadow-card">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-serif text-xl text-lavender">Find a shade</h2>
-
-          <Link
-            href="/collection/new"
-            className="inline-block rounded-lg bg-berry px-4 py-2 text-center text-sm font-medium text-white hover:bg-berry-dark"
-          >
-            + Add powder
-          </Link>
-        </div>
-
-        {/* Search */}
-        <div className="mb-5">
-          <label
-            htmlFor="powder-search"
-            className="mb-1 block text-sm font-medium text-text-secondary"
-          >
-            Search
-          </label>
-          <input
-            id="powder-search"
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by shade, brand or product code..."
-            className="w-full rounded-lg border border-border-strong bg-surface-elevated px-4 py-2 text-sm text-text outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
-          />
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <label
-              htmlFor="colour-filter"
-              className="mb-1 block text-sm font-medium text-text-secondary"
-            >
-              Colour family
-            </label>
-            <select
-              id="colour-filter"
-              value={colourFamily}
-              onChange={(event) => setColourFamily(event.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
-            >
-              <option value="">All colours</option>
-              <option value="red">Red</option>
-              <option value="pink">Pink</option>
-              <option value="orange">Orange</option>
-              <option value="yellow">Yellow</option>
-              <option value="green">Green</option>
-              <option value="blue">Blue</option>
-              <option value="purple">Purple</option>
-              <option value="brown">Brown</option>
-              <option value="neutral">Neutral</option>
-              <option value="black">Black</option>
-              <option value="white">White</option>
-              <option value="multicolour">Multicolour</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="finish-filter"
-              className="mb-1 block text-sm font-medium text-text-secondary"
-            >
-              Finish
-            </label>
-            <select
-              id="finish-filter"
-              value={finish}
-              onChange={(event) => setFinish(event.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
-            >
-              <option value="">All finishes</option>
-              <option value="solid">Solid</option>
-              <option value="glitter">Glitter</option>
-              <option value="shimmer">Shimmer</option>
-              <option value="chrome">Chrome</option>
-              <option value="holographic">Holographic</option>
-              <option value="flake">Flake</option>
-              <option value="thermal">Thermal</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="intensity-filter"
-              className="mb-1 block text-sm font-medium text-text-secondary"
-            >
-              Intensity
-            </label>
-            <select
-              id="intensity-filter"
-              value={intensity}
-              onChange={(event) => setIntensity(event.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
-            >
-              <option value="">All intensities</option>
-              <option value="light">Light</option>
-              <option value="medium">Medium</option>
-              <option value="dark">Dark</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="undertone-filter"
-              className="mb-1 block text-sm font-medium text-text-secondary"
-            >
-              Undertone
-            </label>
-            <select
-              id="undertone-filter"
-              value={undertone}
-              onChange={(event) => setUndertone(event.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
-            >
-              <option value="">All undertones</option>
-              <option value="warm">Warm</option>
-              <option value="cool">Cool</option>
-              <option value="neutral">Neutral</option>
-              <option value="unknown">Unknown</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Tag filters */}
-        <div className="mt-5 border-t border-border pt-5">
-          <div className="mb-3">
-            <h3 className="text-sm font-medium text-text-secondary">
-              Filter by tags
-            </h3>
+            <h2 className="font-serif text-xl text-lavender">Find a shade</h2>
 
             <p className="mt-1 text-xs text-muted">
-              Select one or more tags. Powders matching any selected tag will
-              appear.
+              Search and organise your collection.
             </p>
           </div>
 
-          {tags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.id);
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((previous) => !previous)}
+              aria-expanded={filtersOpen}
+              aria-controls="collection-filters"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-neon hover:text-lavender"
+            >
+              <span>Filters</span>
 
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => {
-                      setSelectedTags((previous) =>
-                        isSelected
-                          ? previous.filter((id) => id !== tag.id)
-                          : [...previous, tag.id]
-                      );
-                    }}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      isSelected
-                        ? "border-neon bg-neon/15 text-lavender"
-                        : "border-border-strong bg-background text-text-secondary hover:border-neon/60 hover:text-lavender"
-                    }`}
-                  >
-                    {tag.name}
-                  </button>
-                );
-              })}
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-neon/20 px-1.5 text-[10px] font-semibold text-lavender">
+                  {activeFilterCount}
+                </span>
+              )}
+
+              <svg
+                className={`h-4 w-4 transition-transform duration-200 ${
+                  filtersOpen ? "rotate-180" : ""
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m6 9 6 6 6-6"
+                />
+              </svg>
+            </button>
+
+            <Link
+              href="/collection/new"
+              className="inline-block rounded-lg bg-berry px-4 py-2 text-center text-sm font-medium text-white hover:bg-berry-dark"
+            >
+              + Add powder
+            </Link>
+          </div>
+        </div>
+
+        {filtersOpen && (
+          <div id="collection-filters" className="mt-5">
+            {/* Search */}
+            <div className="mb-5">
+              <label
+                htmlFor="powder-search"
+                className="mb-1 block text-sm font-medium text-text-secondary"
+              >
+                Search
+              </label>
+              <input
+                id="powder-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by shade, brand or product code..."
+                className="w-full rounded-lg border border-border-strong bg-surface-elevated px-4 py-2 text-sm text-text outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+              />
             </div>
-          ) : (
-            <p className="text-xs text-muted">
-              No tags available yet. Create tags when adding or editing a
-              powder.
-            </p>
-          )}
 
-          {selectedTags.length > 0 && (
-            <p className="mt-3 text-xs text-lavender">
-              {selectedTags.length} {selectedTags.length === 1 ? "tag" : "tags"}{" "}
-              selected · Matching any selected tag
-            </p>
-          )}
-        </div>
+            {/* Filters */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label
+                  htmlFor="colour-filter"
+                  className="mb-1 block text-sm font-medium text-text-secondary"
+                >
+                  Colour family
+                </label>
+                <select
+                  id="colour-filter"
+                  value={colourFamily}
+                  onChange={(event) => setColourFamily(event.target.value)}
+                  className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
+                >
+                  <option value="">All colours</option>
+                  <option value="red">Red</option>
+                  <option value="pink">Pink</option>
+                  <option value="orange">Orange</option>
+                  <option value="yellow">Yellow</option>
+                  <option value="green">Green</option>
+                  <option value="blue">Blue</option>
+                  <option value="purple">Purple</option>
+                  <option value="brown">Brown</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="black">Black</option>
+                  <option value="white">White</option>
+                  <option value="multicolour">Multicolour</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
 
-        {/* Sorting and favourites */}
-        <div className="mt-5 flex flex-col gap-4 border-t border-[#F0E5E9] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex items-center gap-2 text-sm text-text-secondary">
-            <input
-              type="checkbox"
-              checked={favouritesOnly}
-              onChange={(event) => setFavouritesOnly(event.target.checked)}
-              className="h-4 w-4 accent-rose-600"
-            />
-            Show favourites only
-          </label>
+              <div>
+                <label
+                  htmlFor="finish-filter"
+                  className="mb-1 block text-sm font-medium text-text-secondary"
+                >
+                  Finish
+                </label>
+                <select
+                  id="finish-filter"
+                  value={finish}
+                  onChange={(event) => setFinish(event.target.value)}
+                  className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
+                >
+                  <option value="">All finishes</option>
+                  <option value="solid">Solid</option>
+                  <option value="glitter">Glitter</option>
+                  <option value="shimmer">Shimmer</option>
+                  <option value="chrome">Chrome</option>
+                  <option value="holographic">Holographic</option>
+                  <option value="flake">Flake</option>
+                  <option value="thermal">Thermal</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="sort-powders"
-              className="whitespace-nowrap text-sm text-muted"
-            >
-              Sort by
-            </label>
-            <select
-              id="sort-powders"
-              value={ordering}
-              onChange={(event) => setOrdering(event.target.value)}
-              className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
-            >
-              <option value="-created_at">Recently added</option>
-              <option value="created_at">Oldest added</option>
-              <option value="name">Name (A–Z)</option>
-              <option value="-name">Name (Z–A)</option>
-              <option value="brand">Brand (A–Z)</option>
-              <option value="-brand">Brand (Z–A)</option>
-            </select>
+              <div>
+                <label
+                  htmlFor="intensity-filter"
+                  className="mb-1 block text-sm font-medium text-text-secondary"
+                >
+                  Intensity
+                </label>
+                <select
+                  id="intensity-filter"
+                  value={intensity}
+                  onChange={(event) => setIntensity(event.target.value)}
+                  className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
+                >
+                  <option value="">All intensities</option>
+                  <option value="light">Light</option>
+                  <option value="medium">Medium</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="undertone-filter"
+                  className="mb-1 block text-sm font-medium text-text-secondary"
+                >
+                  Undertone
+                </label>
+                <select
+                  id="undertone-filter"
+                  value={undertone}
+                  onChange={(event) => setUndertone(event.target.value)}
+                  className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
+                >
+                  <option value="">All undertones</option>
+                  <option value="warm">Warm</option>
+                  <option value="cool">Cool</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tag filters */}
+            <div className="mt-5 border-t border-border pt-5">
+              <div className="mb-3">
+                <h3 className="text-sm font-medium text-text-secondary">
+                  Filter by tags
+                </h3>
+
+                <p className="mt-1 text-xs text-muted">
+                  Select one or more tags. Powders matching any selected tag
+                  will appear.
+                </p>
+              </div>
+
+              {tags.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag.id);
+
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          setSelectedTags((previous) =>
+                            isSelected
+                              ? previous.filter((id) => id !== tag.id)
+                              : [...previous, tag.id]
+                          );
+                        }}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          isSelected
+                            ? "border-neon bg-neon/15 text-lavender"
+                            : "border-border-strong bg-background text-text-secondary hover:border-neon/60 hover:text-lavender"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted">
+                  No tags available yet. Create tags when adding or editing a
+                  powder.
+                </p>
+              )}
+
+              {selectedTags.length > 0 && (
+                <p className="mt-3 text-xs text-lavender">
+                  {selectedTags.length}{" "}
+                  {selectedTags.length === 1 ? "tag" : "tags"} selected ·
+                  Matching any selected tag
+                </p>
+              )}
+            </div>
+
+            {/* Sorting and favourites */}
+            <div className="mt-5 flex flex-col gap-4 border-t border-[#F0E5E9] pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex items-center gap-2 text-sm text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={favouritesOnly}
+                  onChange={(event) => setFavouritesOnly(event.target.checked)}
+                  className="h-4 w-4 accent-rose-600"
+                />
+                Show favourites only
+              </label>
+
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="sort-powders"
+                  className="whitespace-nowrap text-sm text-muted"
+                >
+                  Sort by
+                </label>
+                <select
+                  id="sort-powders"
+                  value={ordering}
+                  onChange={(event) => setOrdering(event.target.value)}
+                  className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text"
+                >
+                  <option value="-created_at">Recently added</option>
+                  <option value="created_at">Oldest added</option>
+                  <option value="name">Name (A–Z)</option>
+                  <option value="-name">Name (Z–A)</option>
+                  <option value="brand">Brand (A–Z)</option>
+                  <option value="-brand">Brand (Z–A)</option>
+                </select>
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-4 text-sm font-medium text-blush hover:text-lavender"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
-        </div>
-
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="mt-4 text-sm font-medium text-blush hover:text-lavender"
-          >
-            Clear filters
-          </button>
         )}
       </section>
 
