@@ -12,6 +12,8 @@ import {
   updatePowderPhoto,
   Powder,
   PowderPhoto,
+  getTags,
+  Tag,
 } from "@/lib/api";
 
 type PhotoType = "product" | "swatch" | "inspiration";
@@ -275,6 +277,7 @@ function PowderDetailContent() {
   const [photos, setPhotos] = useState<PowderPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tags, setTags] = useState<Tag[]>([]);
 
   useEffect(() => {
     async function loadPowder() {
@@ -301,6 +304,15 @@ function PowderDetailContent() {
 
         setPowder(powderData);
         setPhotos(photoData);
+
+        // Load tags separately so a tag API error doesn't prevent
+        // the powder details and photos from loading.
+        try {
+          const tagData = await getTags(token);
+          setTags(tagData);
+        } catch {
+          setTags([]);
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Could not load powder details."
@@ -489,6 +501,7 @@ function PowderDetailContent() {
   }
 
   if (!powder) return null;
+  const powderTags = tags.filter((tag) => powder.tags?.includes(tag.id));
 
   const productPhotos = photos.filter(
     (photo) => photo.photo_type === "product"
@@ -609,6 +622,26 @@ function PowderDetailContent() {
                     </span>
                   </div>
                 ))}
+              </div>
+
+              {/* Tags */}
+              <div className="mt-6">
+                <h2 className="mb-3 text-sm font-semibold text-text">Tags</h2>
+
+                {powderTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {powderTags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex items-center rounded-full border border-border-strong bg-background px-3 py-1.5 text-xs font-medium text-lavender"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted">No tags added yet.</p>
+                )}
               </div>
 
               {powder.is_favourite && (

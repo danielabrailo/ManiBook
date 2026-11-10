@@ -16,6 +16,7 @@ export interface Powder {
   created_at: string;
   updated_at: string;
   primary_photo: string | null;
+  tags: number[];
 }
 
 export interface PowderPhoto {
@@ -28,6 +29,12 @@ export interface PowderPhoto {
   created_at: string;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface PowderFilters {
   search?: string;
   colour_family?: string;
@@ -36,6 +43,44 @@ export interface PowderFilters {
   undertone?: string;
   is_favourite?: boolean;
   ordering?: string;
+}
+
+export async function getTags(accessToken: string): Promise<Tag[]> {
+  const response = await fetch(`${API_BASE_URL}/tags/`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not load tags.");
+  }
+
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : data.results;
+}
+
+export async function createTag(
+  accessToken: string,
+  name: string
+): Promise<Tag> {
+  const response = await fetch(`${API_BASE_URL}/tags/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
 }
 
 export async function getPowders(
@@ -77,7 +122,9 @@ export async function getPowders(
 
 export async function createPowder(
   accessToken: string,
-  powderData: Omit<Powder, "id" | "created_at" | "updated_at">
+  powderData: Omit<Powder, "id" | "created_at" | "updated_at" | "tags"> & {
+    tags?: number[];
+  }
 ): Promise<Powder> {
   const response = await fetch(`${API_BASE_URL}/powders/`, {
     method: "POST",

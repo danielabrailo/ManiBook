@@ -2,8 +2,12 @@ from django.db.models import Prefetch
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Powder, PowderPhoto
-from .serializers import PowderSerializer, PowderPhotoSerializer
+from .models import Powder, PowderPhoto, Tag
+from .serializers import (
+    PowderSerializer,
+    PowderPhotoSerializer,
+    TagSerializer,
+)
 
 
 class PowderViewSet(viewsets.ModelViewSet):
@@ -48,3 +52,12 @@ class PowderPhotoViewSet(viewsets.ModelViewSet):
         return PowderPhoto.objects.filter(
             powder__owner=self.request.user
         ).select_related("powder")
+
+class TagViewSet(viewsets.ModelViewSet):
+    serializer_class = TagSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Tag.objects.filter(
+            owner=self.request.user
+        )

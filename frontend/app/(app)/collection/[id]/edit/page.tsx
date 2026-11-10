@@ -3,10 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getPowder, updatePowder, Powder } from "@/lib/api";
+import TagInput from "../../../../components/TagInput";
 
 function EditPowderContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const [accessToken, setAccessToken] = useState("");
 
   const [powder, setPowder] = useState<Powder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ function EditPowderContent() {
         router.push("/login");
         return;
       }
+      setAccessToken(token);
 
       const powderId = Number(id);
 
@@ -99,6 +102,7 @@ function EditPowderContent() {
         coverage: powder.coverage,
         is_favourite: powder.is_favourite,
         notes: powder.notes,
+        tags: powder.tags,
       });
 
       router.push(`/collection/${powder.id}`);
@@ -386,6 +390,36 @@ function EditPowderContent() {
               rows={4}
               placeholder="e.g. Glows in the dark, looks different under daylight..."
             />
+          </section>
+
+          {/* Tags */}
+          <section className={sectionClass}>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-text">
+                Tags
+                <span className="ml-2 text-xs font-normal text-muted">
+                  Optional
+                </span>
+              </h2>
+
+              <p className="mt-1 text-sm text-muted">
+                Organise this powder with your own labels.
+              </p>
+            </div>
+
+            {accessToken ? (
+              <TagInput
+                accessToken={accessToken}
+                selectedTags={powder.tags || []}
+                onChange={(tagIds) =>
+                  setPowder((previous) =>
+                    previous ? { ...previous, tags: tagIds } : previous
+                  )
+                }
+              />
+            ) : (
+              <p className="text-sm text-muted">Loading tags...</p>
+            )}
           </section>
 
           {/* Favourite */}

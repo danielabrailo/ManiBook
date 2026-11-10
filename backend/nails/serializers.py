@@ -1,14 +1,31 @@
 from rest_framework import serializers
-from .models import Powder, Manicure, PowderPhoto
+from .models import Powder, Manicure, PowderPhoto, Tag
 from django.db import transaction
-
 
 class PowderSerializer(serializers.ModelSerializer):
     primary_photo = serializers.SerializerMethodField()
 
+    tags = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Tag.objects.none(),
+        required=False,
+    )
+
     class Meta:
         model = Powder
         exclude = ["owner"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated:
+            fields["tags"].child_relation.queryset = Tag.objects.filter(
+                owner=request.user
+            )
+
+        return fields
 
     def get_primary_photo(self, obj):
         photos = getattr(obj, "primary_product_photos", [])
@@ -151,3 +168,32 @@ class PowderPhotoSerializer(serializers.ModelSerializer):
             ).exclude(pk=instance.pk).update(is_primary=False)
 
         return super().update(instance, validated_data)
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ["id", "name", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def validate_name(self, value):
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated:
+            existing_tags = Tag.objects.filter(
+                owner=request.user,
+                name=value,
+            )
+
+            if self.instance:
+                existing_tags = existing_tags.exclude(pk=self.instance.pk)
+
+            if existing_tags.exists():
+                raise serializers.ValidationError(
+                    "You already have a tag with this name."
+                )
+
+        return value
+
+    def create(self, validated_data):
+        validated_data["owner"] = self.context["request"].user
+        return super().create(validated_data)

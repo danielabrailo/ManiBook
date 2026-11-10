@@ -1,11 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPowder, uploadPowderPhoto } from "@/lib/api";
+import { createPowder, updatePowder, uploadPowderPhoto } from "@/lib/api";
+import TagInput from "../../../components/TagInput";
 
 export default function NewPowderPage() {
   const router = useRouter();
+  const [accessToken, setAccessToken] = useState("");
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    setAccessToken(token);
+  }, [router]);
 
   const [form, setForm] = useState({
     name: "",
@@ -66,9 +80,19 @@ export default function NewPowderPage() {
 
       // Create the powder only once.
       if (!powderId) {
-        const newPowder = await createPowder(token, form);
+        const newPowder = await createPowder(token, {
+          ...form,
+          tags: selectedTags,
+        });
+
         powderId = newPowder.id;
         setCreatedPowderId(powderId);
+      } else {
+        // If the powder was already created but photo upload failed,
+        // make sure any tag changes are saved before retrying.
+        await updatePowder(token, powderId, {
+          tags: selectedTags,
+        });
       }
 
       // Upload the photo if one was selected.
@@ -382,6 +406,32 @@ export default function NewPowderPage() {
               rows={4}
               placeholder="e.g. Glows in the dark, looks different under daylight..."
             />
+          </section>
+
+          {/* Tags */}
+          <section className={sectionClass}>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-text">
+                Tags
+                <span className="ml-2 text-xs font-normal text-muted">
+                  Optional
+                </span>
+              </h2>
+
+              <p className="mt-1 text-sm text-muted">
+                Add your own labels to organise and find this powder later.
+              </p>
+            </div>
+
+            {accessToken ? (
+              <TagInput
+                accessToken={accessToken}
+                selectedTags={selectedTags}
+                onChange={setSelectedTags}
+              />
+            ) : (
+              <p className="text-sm text-muted">Loading tags...</p>
+            )}
           </section>
 
           {/* Product photo */}

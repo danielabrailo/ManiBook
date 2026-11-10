@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getPowders, Powder, PowderFilters } from "@/lib/api";
+import { getPowders, getTags, Powder, PowderFilters, Tag } from "@/lib/api";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/api";
 
@@ -13,6 +13,7 @@ export default function CollectionPage() {
   const [powders, setPowders] = useState<Powder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tags, setTags] = useState<Tag[]>([]);
 
   // Collection browsing filters
   const [search, setSearch] = useState("");
@@ -88,6 +89,38 @@ export default function CollectionPage() {
     favouritesOnly,
     ordering,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTags() {
+      const token = sessionStorage.getItem("accessToken");
+
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const data = await getTags(token);
+
+        if (!cancelled) {
+          setTags(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Could not load tags:", err);
+          setTags([]);
+        }
+      }
+    }
+
+    loadTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   function clearFilters() {
     setSearch("");
@@ -389,6 +422,21 @@ export default function CollectionPage() {
                   <p className="mt-2 text-xs capitalize text-muted">
                     {powder.finish} · {powder.colour_family}
                   </p>
+
+                  {powder.tags && powder.tags.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {tags
+                        .filter((tag) => powder.tags.includes(tag.id))
+                        .map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="rounded-full border border-border-strong bg-background px-2.5 py-1 text-[10px] font-medium text-lavender"
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </article>
             </Link>
