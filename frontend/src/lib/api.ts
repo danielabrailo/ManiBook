@@ -101,14 +101,15 @@ export async function uploadPowderPhoto(
   powderId: number,
   image: File,
   photoType: "product" | "swatch" | "inspiration" = "product",
-  isPrimary: boolean = false
-) {
+  isPrimary: boolean = false,
+  caption: string = ""
+): Promise<PowderPhoto> {
   const formData = new FormData();
 
   formData.append("powder", String(powderId));
   formData.append("image", image);
   formData.append("photo_type", photoType);
-  formData.append("caption", "");
+  formData.append("caption", caption);
   formData.append("is_primary", String(isPrimary));
 
   const response = await fetch(`${API_BASE_URL}/powder-photos/`, {
@@ -117,6 +118,28 @@ export async function uploadPowderPhoto(
       Authorization: `Bearer ${accessToken}`,
     },
     body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function updatePowderPhoto(
+  accessToken: string,
+  photoId: number,
+  updates: Partial<Pick<PowderPhoto, "caption" | "is_primary">>
+): Promise<PowderPhoto> {
+  const response = await fetch(`${API_BASE_URL}/powder-photos/${photoId}/`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updates),
   });
 
   if (!response.ok) {

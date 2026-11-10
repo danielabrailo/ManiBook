@@ -6,10 +6,181 @@ import {
   getPowder,
   getPowderPhotos,
   getImageUrl,
+  deletePowder,
+  deletePowderPhoto,
+  uploadPowderPhoto,
+  updatePowderPhoto,
   Powder,
   PowderPhoto,
 } from "@/lib/api";
-import { deletePowder, deletePowderPhoto } from "@/lib/api";
+
+type PhotoType = "product" | "swatch" | "inspiration";
+
+interface PhotoGalleryProps {
+  title: string;
+  photoType: PhotoType;
+  items: PowderPhoto[];
+  onUpload: (
+    photoType: PhotoType,
+    file: File,
+    caption: string
+  ) => Promise<void>;
+  onSetPrimary: (photoId: number) => Promise<void>;
+  onDelete: (photoId: number) => Promise<void>;
+}
+
+function PhotoGallery({
+  title,
+  photoType,
+  items,
+  onUpload,
+  onSetPrimary,
+  onDelete,
+}: PhotoGalleryProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [updatingPhotoId, setUpdatingPhotoId] = useState<number | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  async function handleUpload() {
+    if (!selectedFile) return;
+
+    setIsUploading(true);
+
+    try {
+      await onUpload(photoType, selectedFile, caption.trim());
+      setSelectedFile(null);
+      setCaption("");
+      setFileInputKey((previous) => previous + 1);
+    } catch {
+      // The parent component displays the error.
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleSetPrimary(photoId: number) {
+    setUpdatingPhotoId(photoId);
+
+    try {
+      await onSetPrimary(photoId);
+    } catch {
+      // The parent component displays the error.
+    } finally {
+      setUpdatingPhotoId(null);
+    }
+  }
+
+  return (
+    <section className="mt-10">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-text">{title}</h2>
+        <span className="text-sm text-muted">
+          {items.length} {items.length === 1 ? "photo" : "photos"}
+        </span>
+      </div>
+
+      {/* Upload form */}
+      <div className="mb-6 rounded-xl border border-border bg-surface p-5">
+        <h3 className="mb-3 text-sm font-semibold text-text">Add a photo</h3>
+
+        <div className="flex flex-col gap-3">
+          <input
+            key={fileInputKey}
+            type="file"
+            accept="image/*"
+            onChange={(event) =>
+              setSelectedFile(event.target.files?.[0] || null)
+            }
+            className="block w-full text-sm text-text-secondary file:mr-4 file:rounded-lg file:border-0 file:bg-plum file:px-4 file:py-2 file:text-sm file:font-medium file:text-text hover:file:bg-border"
+          />
+
+          <input
+            type="text"
+            value={caption}
+            onChange={(event) => setCaption(event.target.value)}
+            maxLength={200}
+            placeholder="Add a caption (optional)"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-muted focus:border-orchid focus:outline-none"
+          />
+
+          <div>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={!selectedFile || isUploading}
+              className="rounded-lg bg-berry px-4 py-2 text-sm font-medium text-white transition hover:bg-berry-dark disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isUploading ? "Uploading..." : "Upload photo"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Photo grid */}
+      {items.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border-strong bg-surface/50 px-6 py-10 text-center">
+          <p className="text-sm text-muted">
+            No {title.toLowerCase()} added yet.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {items.map((photo) => (
+            <div
+              key={photo.id}
+              className="overflow-hidden rounded-xl border border-border bg-surface"
+            >
+              <div className="relative">
+                <img
+                  src={getImageUrl(photo.image)}
+                  alt={photo.caption || title}
+                  className="aspect-square w-full bg-background object-contain"
+                />
+
+                {photo.is_primary && (
+                  <span className="absolute left-2 top-2 rounded-full bg-berry px-3 py-1 text-xs font-medium text-white">
+                    Primary
+                  </span>
+                )}
+              </div>
+
+              <div className="p-3">
+                <p className="min-h-5 text-sm text-text-secondary">
+                  {photo.caption || "No caption"}
+                </p>
+
+                <div className="mt-3 flex flex-col gap-2">
+                  {!photo.is_primary && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimary(photo.id)}
+                      disabled={updatingPhotoId !== null}
+                      className="text-left text-xs font-medium text-blush hover:text-lavender disabled:opacity-50"
+                    >
+                      {updatingPhotoId === photo.id
+                        ? "Updating..."
+                        : "Set as primary"}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => void onDelete(photo.id)}
+                    className="text-left text-xs font-medium text-red-400 hover:text-red-300"
+                  >
+                    Remove photo
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function PowderDetailContent() {
   const params = useParams<{ id: string }>();
@@ -57,77 +228,110 @@ function PowderDetailContent() {
     loadPowder();
   }, [params.id, router]);
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-rose-50 p-10 text-center">
-        Loading powder details...
-      </main>
-    );
+  async function handleUploadPhoto(
+    photoType: PhotoType,
+    file: File,
+    caption: string
+  ) {
+    if (!powder) return;
+
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.push("/login");
+      throw new Error("Authentication required.");
+    }
+
+    try {
+      const hasPrimary = photos.some(
+        (photo) => photo.photo_type === photoType && photo.is_primary
+      );
+
+      const uploadedPhoto = await uploadPowderPhoto(
+        token,
+        powder.id,
+        file,
+        photoType,
+        !hasPrimary,
+        caption
+      );
+
+      setPhotos((previous) => [
+        ...previous.map((photo) =>
+          photo.photo_type === photoType && uploadedPhoto.is_primary
+            ? { ...photo, is_primary: false }
+            : photo
+        ),
+        uploadedPhoto,
+      ]);
+
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload photo.");
+      throw err;
+    }
   }
 
-  if (error || !powder) {
-    return (
-      <main className="min-h-screen bg-rose-50 p-10">
-        <p className="text-red-700">{error || "Powder not found."}</p>
-        <button
-          onClick={() => router.push("/collection")}
-          className="mt-4 text-blush underline"
-        >
-          Back to collection
-        </button>
-      </main>
-    );
+  async function handleSetPrimary(photoId: number) {
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.push("/login");
+      throw new Error("Authentication required.");
+    }
+
+    const photo = photos.find((item) => item.id === photoId);
+
+    if (!photo) return;
+
+    try {
+      const updatedPhoto = await updatePowderPhoto(token, photoId, {
+        is_primary: true,
+      });
+
+      setPhotos((previous) =>
+        previous.map((item) =>
+          item.photo_type === updatedPhoto.photo_type
+            ? {
+                ...item,
+                is_primary: item.id === updatedPhoto.id,
+              }
+            : item
+        )
+      );
+
+      setError("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not update the primary photo."
+      );
+      throw err;
+    }
   }
 
-  const productPhotos = photos.filter(
-    (photo) => photo.photo_type === "product"
-  );
-
-  const swatchPhotos = photos.filter((photo) => photo.photo_type === "swatch");
-
-  const inspirationPhotos = photos.filter(
-    (photo) => photo.photo_type === "inspiration"
-  );
-
-  const mainPhoto = photos.find((photo) => photo.is_primary) || photos[0];
-
-  function PhotoGallery({
-    title,
-    items,
-    onDelete,
-  }: {
-    title: string;
-    items: PowderPhoto[];
-    onDelete: (id: number) => void;
-  }) {
-    if (items.length === 0) return null;
-
-    return (
-      <section className="mt-8">
-        <h2 className="mb-4 text-xl font-semibold text-rose-950">{title}</h2>
-
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {items.map((photo) => (
-            <div key={photo.id}>
-              <img
-                src={getImageUrl(photo.image)}
-                alt={photo.caption || title}
-                className="aspect-square w-full rounded-xl object-cover"
-              />
-              {photo.caption && (
-                <p className="mt-2 text-sm text-gray-500">{photo.caption}</p>
-              )}
-              <button
-                onClick={() => onDelete(photo.id)}
-                className="mt-2 text-xs font-medium text-red-600 hover:text-red-800"
-              >
-                Remove photo
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
+  async function handleDeletePhoto(photoId: number) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this photo?"
     );
+
+    if (!confirmed) return;
+
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await deletePowderPhoto(token, photoId);
+      setPhotos((previous) => previous.filter((photo) => photo.id !== photoId));
+      setError("");
+    } catch {
+      setError("Could not delete this photo.");
+    }
   }
 
   async function handleDeletePowder() {
@@ -152,30 +356,46 @@ function PowderDetailContent() {
     }
   }
 
-  async function handleDeletePhoto(photoId: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this photo?"
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-background p-10 text-center text-text-secondary">
+        Loading powder details...
+      </main>
     );
-
-    if (!confirmed) return;
-
-    const token = sessionStorage.getItem("accessToken");
-
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      await deletePowderPhoto(token, photoId);
-      setPhotos((previous) => previous.filter((photo) => photo.id !== photoId));
-    } catch {
-      setError("Could not delete this photo.");
-    }
   }
 
+  if (error && !powder) {
+    return (
+      <main className="min-h-screen bg-background p-10">
+        <p className="text-red-400">{error}</p>
+        <button
+          onClick={() => router.push("/collection")}
+          className="mt-4 text-blush underline"
+        >
+          Back to collection
+        </button>
+      </main>
+    );
+  }
+
+  if (!powder) return null;
+
+  const productPhotos = photos.filter(
+    (photo) => photo.photo_type === "product"
+  );
+
+  const swatchPhotos = photos.filter((photo) => photo.photo_type === "swatch");
+
+  const inspirationPhotos = photos.filter(
+    (photo) => photo.photo_type === "inspiration"
+  );
+
+  // The main image must always come from the product-photo category.
+  const mainPhoto =
+    productPhotos.find((photo) => photo.is_primary) || productPhotos[0];
+
   return (
-    <main className="min-h-screen bg-rose-50 px-6 py-10">
+    <main className="min-h-screen bg-background px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <button
           onClick={() => router.push("/collection")}
@@ -184,35 +404,41 @@ function PowderDetailContent() {
           ← Back to collection
         </button>
 
-        <div className="overflow-hidden rounded-2xl bg-surface shadow-sm">
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
           <div className="grid grid-cols-1 gap-8 p-8 md:grid-cols-2">
             <div>
               {mainPhoto ? (
                 <img
                   src={getImageUrl(mainPhoto.image)}
                   alt={mainPhoto.caption || powder.name}
-                  className="aspect-square w-full rounded-2xl object-cover"
+                  className="aspect-square w-full rounded-2xl bg-background object-contain"
                 />
               ) : (
                 <div
                   className="flex aspect-square items-center justify-center rounded-2xl"
                   style={{
-                    backgroundColor: powder.hex_colour || "#f4a6b8",
+                    backgroundColor: powder.hex_colour || "#35263B",
                   }}
                 >
-                  <span className="rounded-lg bg-surface/70 px-4 py-2 text-sm text-gray-700">
-                    No photo uploaded
+                  <span className="rounded-lg bg-surface/80 px-4 py-2 text-sm text-text">
+                    No product photo uploaded
                   </span>
                 </div>
               )}
             </div>
 
             <div>
-              <p className="text-sm font-medium uppercase tracking-wide text-rose-500">
-                {powder.brand}
+              <p className="text-sm font-medium uppercase tracking-wide text-blush">
+                {powder.brand || "Unbranded"}
               </p>
 
-              <h1 className="mt-2 text-3xl font-semibold text-rose-950">
+              <h1 className="mt-2 text-3xl font-semibold text-text">
                 {powder.name}
               </h1>
 
@@ -226,30 +452,30 @@ function PowderDetailContent() {
 
                 <button
                   onClick={handleDeletePowder}
-                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                  className="rounded-lg border border-red-400/40 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10"
                 >
                   Delete powder
                 </button>
               </div>
 
               {powder.product_code && (
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-muted">
                   Product code: {powder.product_code}
                 </p>
               )}
 
               <div className="mt-6 flex items-center gap-3">
                 <div
-                  className="h-12 w-12 rounded-full border border-gray-200"
+                  className="h-12 w-12 rounded-full border border-border"
                   style={{
-                    backgroundColor: powder.hex_colour || "#f4a6b8",
+                    backgroundColor: powder.hex_colour || "#35263B",
                   }}
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-text">
                     Colour reference
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted">
                     {powder.hex_colour || "No hex colour specified"}
                   </p>
                 </div>
@@ -265,28 +491,28 @@ function PowderDetailContent() {
                 ].map(([label, value]) => (
                   <div
                     key={label}
-                    className="flex justify-between border-b border-rose-100 pb-3"
+                    className="flex justify-between border-b border-border pb-3"
                   >
-                    <span className="text-sm text-gray-500">{label}</span>
-                    <span className="text-sm font-medium capitalize text-gray-800">
+                    <span className="text-sm text-text-secondary">{label}</span>
+                    <span className="text-sm font-medium capitalize text-text">
                       {value}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-6">
-                {powder.is_favourite && (
-                  <span className="rounded-full bg-rose-100 px-3 py-1 text-sm text-rose-700">
+              {powder.is_favourite && (
+                <div className="mt-6">
+                  <span className="rounded-full bg-berry/15 px-3 py-1 text-sm text-blush">
                     ♥ Favourite
                   </span>
-                )}
-              </div>
+                </div>
+              )}
 
               {powder.notes && (
                 <div className="mt-6">
-                  <h2 className="font-medium text-gray-800">Notes</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-gray-600">
+                  <h2 className="font-medium text-text">Notes</h2>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-text-secondary">
                     {powder.notes}
                   </p>
                 </div>
@@ -297,27 +523,30 @@ function PowderDetailContent() {
 
         <PhotoGallery
           title="Product photos"
+          photoType="product"
           items={productPhotos}
+          onUpload={handleUploadPhoto}
+          onSetPrimary={handleSetPrimary}
           onDelete={handleDeletePhoto}
         />
 
         <PhotoGallery
           title="Swatches"
+          photoType="swatch"
           items={swatchPhotos}
+          onUpload={handleUploadPhoto}
+          onSetPrimary={handleSetPrimary}
           onDelete={handleDeletePhoto}
         />
 
         <PhotoGallery
           title="Inspiration"
+          photoType="inspiration"
           items={inspirationPhotos}
+          onUpload={handleUploadPhoto}
+          onSetPrimary={handleSetPrimary}
           onDelete={handleDeletePhoto}
         />
-
-        {photos.length === 0 && (
-          <p className="mt-8 text-center text-sm text-gray-500">
-            No photos have been added to this powder yet.
-          </p>
-        )}
       </div>
     </main>
   );
