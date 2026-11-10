@@ -9,17 +9,10 @@ export default function NewPowderPage() {
   const router = useRouter();
   const [accessToken, setAccessToken] = useState("");
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
-
-  useEffect(() => {
-    const token = sessionStorage.getItem("accessToken");
-
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-
-    setAccessToken(token);
-  }, [router]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [createdPowderId, setCreatedPowderId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -35,10 +28,33 @@ export default function NewPowderPage() {
     notes: "",
   });
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [createdPowderId, setCreatedPowderId] = useState<number | null>(null);
+  useEffect(() => {
+    setForm({
+      name: "",
+      brand: "",
+      product_code: "",
+      colour_family: "pink",
+      hex_colour: "",
+      finish: "solid",
+      intensity: "medium",
+      undertone: "unknown",
+      coverage: "unknown",
+      is_favourite: false,
+      notes: "",
+    });
+    setSelectedTags([]);
+    setPhoto(null);
+    setCreatedPowderId(null);
+
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    setAccessToken(token);
+  }, [router]);
 
   const inputClass =
     "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-text placeholder:text-muted outline-none transition focus:border-orchid focus:ring-1 focus:ring-orchid/30";
@@ -170,7 +186,8 @@ export default function NewPowderPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
+          {" "}
           {/* Basic information */}
           <section className={sectionClass}>
             <div className="mb-5">
@@ -196,6 +213,7 @@ export default function NewPowderPage() {
                   placeholder="e.g. Rosewater"
                   required
                   maxLength={150}
+                  autoComplete="off"
                 />
               </div>
 
@@ -212,6 +230,7 @@ export default function NewPowderPage() {
                   placeholder="e.g. GLAMRDiP"
                   required
                   maxLength={100}
+                  autoComplete="off"
                 />
               </div>
 
@@ -227,11 +246,11 @@ export default function NewPowderPage() {
                   className={inputClass}
                   placeholder="Optional"
                   maxLength={100}
+                  autoComplete="off"
                 />
               </div>
             </div>
           </section>
-
           {/* Colour and finish */}
           <section className={sectionClass}>
             <div className="mb-5">
@@ -357,6 +376,7 @@ export default function NewPowderPage() {
                       }))
                     }
                     className="h-11 w-12 shrink-0 cursor-pointer rounded-lg border border-border bg-background p-1"
+                    autoComplete="off"
                   />
 
                   <input
@@ -367,6 +387,7 @@ export default function NewPowderPage() {
                     className={inputClass}
                     placeholder="#F4A6B8"
                     maxLength={7}
+                    autoComplete="off"
                   />
                 </div>
 
@@ -382,7 +403,6 @@ export default function NewPowderPage() {
               </div>
             </div>
           </section>
-
           {/* Notes */}
           <section className={sectionClass}>
             <div className="mb-4">
@@ -407,7 +427,6 @@ export default function NewPowderPage() {
               placeholder="e.g. Glows in the dark, looks different under daylight..."
             />
           </section>
-
           {/* Tags */}
           <section className={sectionClass}>
             <div className="mb-4">
@@ -433,7 +452,6 @@ export default function NewPowderPage() {
               <p className="text-sm text-muted">Loading tags...</p>
             )}
           </section>
-
           {/* Product photo */}
           <section className={sectionClass}>
             <div className="mb-4">
@@ -468,6 +486,7 @@ export default function NewPowderPage() {
                 accept="image/*"
                 onChange={(e) => setPhoto(e.target.files?.[0] || null)}
                 className="sr-only"
+                autoComplete="off"
               />
             </label>
 
@@ -481,7 +500,6 @@ export default function NewPowderPage() {
               </button>
             )}
           </section>
-
           {/* Favourite */}
           <section className={sectionClass}>
             <label className="flex cursor-pointer items-center justify-between gap-4">
@@ -500,10 +518,10 @@ export default function NewPowderPage() {
                 checked={form.is_favourite}
                 onChange={handleChange}
                 className="h-5 w-5 shrink-0 cursor-pointer accent-berry"
+                autoComplete="off"
               />
             </label>
           </section>
-
           {/* Error message */}
           {error && (
             <div
@@ -513,7 +531,6 @@ export default function NewPowderPage() {
               {error}
             </div>
           )}
-
           {/* Submit */}
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
             <button
