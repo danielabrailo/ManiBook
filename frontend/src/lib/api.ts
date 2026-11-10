@@ -1,5 +1,165 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+// ============================================================
+// Authentication
+// ============================================================
+
+// Shared promise prevents multiple simultaneous refresh requests.
+let refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * Clears the stored credentials and redirects to login.
+ */
+function expireSession(): void {
+  if (typeof window === "undefined") return;
+
+  sessionStorage.removeItem("accessToken");
+  sessionStorage.removeItem("refreshToken");
+
+  window.location.assign("/login");
+}
+
+/**
+ * Requests a new access token using the stored refresh token.
+ *
+ * Returns:
+ * - New access token if successful.
+ * - null if the refresh token is missing or invalid.
+ *
+ * Network errors and server errors are thrown without
+ * clearing the existing session.
+ */
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    const refreshToken = sessionStorage.getItem("refreshToken");
+
+    if (!refreshToken) {
+      expireSession();
+      return null;
+    }
+
+    let response: Response;
+
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          refresh: refreshToken,
+        }),
+      });
+    } catch {
+      throw new Error(
+        "Unable to refresh your session. Please check your connection."
+      );
+    }
+
+    // A 400 or 401 means the refresh credentials are no longer valid.
+    if (response.status === 400 || response.status === 401) {
+      expireSession();
+      return null;
+    }
+
+    // A server error should not automatically log the user out.
+    if (!response.ok) {
+      throw new Error(
+        "The server could not refresh your session. Please try again."
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.access) {
+      throw new Error("The server returned an invalid refresh response.");
+    }
+
+    // Store the new access token.
+    sessionStorage.setItem("accessToken", data.access);
+
+    // SimpleJWT normally doesn't rotate refresh tokens by default.
+    // If rotation is enabled, save the replacement token too.
+    if (data.refresh) {
+      sessionStorage.setItem("refreshToken", data.refresh);
+    }
+
+    return data.access as string;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+/**
+ * Makes an authenticated API request.
+ *
+ * If the access token has expired:
+ * 1. Refreshes it.
+ * 2. Retries the original request once.
+ * 3. Redirects to login if authentication still fails.
+ */
+async function authenticatedFetch(
+  accessToken: string,
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const getCurrentAccessToken = () => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("accessToken") || accessToken;
+    }
+
+    return accessToken;
+  };
+
+  const makeRequest = (token: string) => {
+    const headers = new Headers(options.headers);
+
+    headers.set("Authorization", `Bearer ${token}`);
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  };
+
+  // First request.
+  const response = await makeRequest(getCurrentAccessToken());
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  // Access token may have expired. Refresh it.
+  const newAccessToken = await refreshAccessToken();
+
+  if (!newAccessToken) {
+    throw new Error("Your session has expired. Please log in again.");
+  }
+
+  // Retry the original request once.
+  const retryResponse = await makeRequest(newAccessToken);
+
+  if (retryResponse.status === 401) {
+    expireSession();
+
+    throw new Error("Your session has expired. Please log in again.");
+  }
+
+  return retryResponse;
+}
+
+// ============================================================
+// Interfaces
+// ============================================================
+
 export interface Powder {
   id: number;
   name: string;
@@ -46,13 +206,18 @@ export interface PowderFilters {
   tags?: number[];
 }
 
+// ============================================================
+// Tags
+// ============================================================
+
 export async function getTags(accessToken: string): Promise<Tag[]> {
-  const response = await fetch(`${API_BASE_URL}/tags/`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/tags/`,
+    {
+      cache: "no-store",
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Could not load tags.");
@@ -67,14 +232,17 @@ export async function createTag(
   accessToken: string,
   name: string
 ): Promise<Tag> {
-  const response = await fetch(`${API_BASE_URL}/tags/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ name: name.trim() }),
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/tags/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: name.trim() }),
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -84,6 +252,10 @@ export async function createTag(
   return response.json();
 }
 
+// ============================================================
+// Powders
+// ============================================================
+
 export async function getPowders(
   accessToken: string,
   filters: PowderFilters = {}
@@ -91,7 +263,9 @@ export async function getPowders(
   const params = new URLSearchParams();
 
   if (filters.search) params.set("search", filters.search);
-  if (filters.colour_family) params.set("colour_family", filters.colour_family);
+  if (filters.colour_family) {
+    params.set("colour_family", filters.colour_family);
+  }
   if (filters.finish) params.set("finish", filters.finish);
   if (filters.intensity) params.set("intensity", filters.intensity);
   if (filters.undertone) params.set("undertone", filters.undertone);
@@ -100,18 +274,18 @@ export async function getPowders(
     params.set("is_favourite", "true");
   }
 
-  if (filters.ordering) params.set("ordering", filters.ordering);
+  if (filters.ordering) {
+    params.set("ordering", filters.ordering);
+  }
 
   filters.tags?.forEach((tagId) => {
     params.append("tags", String(tagId));
   });
 
-  const response = await fetch(
+  const response = await authenticatedFetch(
+    accessToken,
     `${API_BASE_URL}/powders/?${params.toString()}`,
     {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
       cache: "no-store",
     }
   );
@@ -131,14 +305,17 @@ export async function createPowder(
     tags?: number[];
   }
 ): Promise<Powder> {
-  const response = await fetch(`${API_BASE_URL}/powders/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(powderData),
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powders/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(powderData),
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -164,13 +341,14 @@ export async function uploadPowderPhoto(
   formData.append("caption", caption);
   formData.append("is_primary", String(isPrimary));
 
-  const response = await fetch(`${API_BASE_URL}/powder-photos/`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: formData,
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powder-photos/`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -185,14 +363,17 @@ export async function updatePowderPhoto(
   photoId: number,
   updates: Partial<Pick<PowderPhoto, "caption" | "is_primary">>
 ): Promise<PowderPhoto> {
-  const response = await fetch(`${API_BASE_URL}/powder-photos/${photoId}/`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(updates),
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powder-photos/${photoId}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -206,12 +387,13 @@ export async function getPowder(
   accessToken: string,
   id: number
 ): Promise<Powder> {
-  const response = await fetch(`${API_BASE_URL}/powders/${id}/`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powders/${id}/`,
+    {
+      cache: "no-store",
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Could not load this powder.");
@@ -224,12 +406,10 @@ export async function getPowderPhotos(
   accessToken: string,
   powderId: number
 ): Promise<PowderPhoto[]> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
+    accessToken,
     `${API_BASE_URL}/powder-photos/?powder=${powderId}`,
     {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
       cache: "no-store",
     }
   );
@@ -243,29 +423,40 @@ export async function getPowderPhotos(
   return Array.isArray(data) ? data : data.results;
 }
 
+// ============================================================
+// Images
+// ============================================================
+
 export function getImageUrl(image: string): string {
   if (image.startsWith("http")) {
     return image;
   }
 
-  const backendOrigin = new URL(API_BASE_URL).origin;
+  const backendOrigin = new URL(API_BASE_URL!).origin;
 
   return `${backendOrigin}${image}`;
 }
+
+// ============================================================
+// Update and delete
+// ============================================================
 
 export async function updatePowder(
   accessToken: string,
   id: number,
   powderData: Partial<Powder>
 ): Promise<Powder> {
-  const response = await fetch(`${API_BASE_URL}/powders/${id}/`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(powderData),
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powders/${id}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(powderData),
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -279,12 +470,13 @@ export async function deletePowder(
   accessToken: string,
   id: number
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/powders/${id}/`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powders/${id}/`,
+    {
+      method: "DELETE",
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Could not delete this powder.");
@@ -295,12 +487,13 @@ export async function deletePowderPhoto(
   accessToken: string,
   photoId: number
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/powder-photos/${photoId}/`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/powder-photos/${photoId}/`,
+    {
+      method: "DELETE",
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Could not delete this photo.");
