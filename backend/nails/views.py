@@ -1,6 +1,7 @@
 from django.db.models import Prefetch
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 
 from .models import Powder, PowderPhoto, Tag
 from .serializers import (
@@ -8,6 +9,7 @@ from .serializers import (
     PowderPhotoSerializer,
     TagSerializer,
 )
+
 
 
 class PowderViewSet(viewsets.ModelViewSet):
@@ -31,7 +33,7 @@ class PowderViewSet(viewsets.ModelViewSet):
             is_primary=True,
         ).order_by("-created_at", "-id")
 
-        return (
+        queryset = (
             Powder.objects
             .filter(owner=self.request.user)
             .prefetch_related(
@@ -42,6 +44,33 @@ class PowderViewSet(viewsets.ModelViewSet):
                 )
             )
         )
+
+        # Filter by tags using OR logic.
+        # Example: ?tags=1&tags=2 returns powders
+        # that have either tag 1 OR tag 2.
+
+        tag_ids = self.request.query_params.getlist("tags")
+
+        if tag_ids:
+            try:
+                tag_ids = [int(tag_id) for tag_id in tag_ids]
+            except (TypeError, ValueError):
+                raise ValidationError({
+                    "tags": "Tag IDs must be valid integers."
+                })
+
+            if any(tag_id <= 0 for tag_id in tag_ids):
+                raise ValidationError({
+                    "tags": "Tag IDs must be positive integers."
+                })
+
+            queryset = queryset.filter(
+                tags__id__in=tag_ids,
+                tags__owner=self.request.user,
+            ).distinct()
+
+        return queryset
+
 
 class PowderPhotoViewSet(viewsets.ModelViewSet):
     serializer_class = PowderPhotoSerializer

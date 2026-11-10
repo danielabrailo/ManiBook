@@ -23,6 +23,7 @@ export default function CollectionPage() {
   const [undertone, setUndertone] = useState("");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [ordering, setOrdering] = useState("-created_at");
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +48,7 @@ export default function CollectionPage() {
         undertone,
         is_favourite: favouritesOnly || undefined,
         ordering,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
       };
 
       try {
@@ -88,6 +90,7 @@ export default function CollectionPage() {
     undertone,
     favouritesOnly,
     ordering,
+    selectedTags,
   ]);
 
   useEffect(() => {
@@ -130,6 +133,7 @@ export default function CollectionPage() {
     setUndertone("");
     setFavouritesOnly(false);
     setOrdering("-created_at");
+    setSelectedTags([]);
   }
 
   const hasActiveFilters =
@@ -138,7 +142,8 @@ export default function CollectionPage() {
     finish !== "" ||
     intensity !== "" ||
     undertone !== "" ||
-    favouritesOnly;
+    favouritesOnly ||
+    selectedTags.length > 0;
 
   return (
     <main className="min-h-screen bg-background px-5 py-8 md:px-8 md:py-10">
@@ -286,6 +291,62 @@ export default function CollectionPage() {
           </div>
         </div>
 
+        {/* Tag filters */}
+        <div className="mt-5 border-t border-border pt-5">
+          <div className="mb-3">
+            <h3 className="text-sm font-medium text-text-secondary">
+              Filter by tags
+            </h3>
+
+            <p className="mt-1 text-xs text-muted">
+              Select one or more tags. Powders matching any selected tag will
+              appear.
+            </p>
+          </div>
+
+          {tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => {
+                const isSelected = selectedTags.includes(tag.id);
+
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      setSelectedTags((previous) =>
+                        isSelected
+                          ? previous.filter((id) => id !== tag.id)
+                          : [...previous, tag.id]
+                      );
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-neon bg-neon/15 text-lavender"
+                        : "border-border-strong bg-background text-text-secondary hover:border-neon/60 hover:text-lavender"
+                    }`}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">
+              No tags available yet. Create tags when adding or editing a
+              powder.
+            </p>
+          )}
+
+          {selectedTags.length > 0 && (
+            <p className="mt-3 text-xs text-lavender">
+              {selectedTags.length} {selectedTags.length === 1 ? "tag" : "tags"}{" "}
+              selected · Matching any selected tag
+            </p>
+          )}
+        </div>
+
         {/* Sorting and favourites */}
         <div className="mt-5 flex flex-col gap-4 border-t border-[#F0E5E9] pt-4 sm:flex-row sm:items-center sm:justify-between">
           <label className="flex items-center gap-2 text-sm text-text-secondary">
@@ -397,7 +458,7 @@ export default function CollectionPage() {
                       fill
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                       unoptimized
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="transition-transform duration-300 group-hover:scale-105 object-contain"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center">

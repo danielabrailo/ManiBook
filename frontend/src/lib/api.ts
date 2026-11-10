@@ -43,6 +43,7 @@ export interface PowderFilters {
   undertone?: string;
   is_favourite?: boolean;
   ordering?: string;
+  tags?: number[];
 }
 
 export async function getTags(accessToken: string): Promise<Tag[]> {
@@ -100,6 +101,10 @@ export async function getPowders(
   }
 
   if (filters.ordering) params.set("ordering", filters.ordering);
+
+  filters.tags?.forEach((tagId) => {
+    params.append("tags", String(tagId));
+  });
 
   const response = await fetch(
     `${API_BASE_URL}/powders/?${params.toString()}`,
