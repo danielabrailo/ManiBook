@@ -27,6 +27,7 @@ interface PhotoGalleryProps {
   ) => Promise<void>;
   onSetPrimary: (photoId: number) => Promise<void>;
   onDelete: (photoId: number) => Promise<void>;
+  onUpdateCaption: (photoId: number, caption: string) => Promise<void>;
 }
 
 function PhotoGallery({
@@ -36,12 +37,17 @@ function PhotoGallery({
   onUpload,
   onSetPrimary,
   onDelete,
+  onUpdateCaption,
 }: PhotoGalleryProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [updatingPhotoId, setUpdatingPhotoId] = useState<number | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
+
+  const [editingPhotoId, setEditingPhotoId] = useState<number | null>(null);
+  const [editedCaption, setEditedCaption] = useState("");
+  const [isSavingCaption, setIsSavingCaption] = useState(false);
 
   async function handleUpload() {
     if (!selectedFile) return;
@@ -69,6 +75,31 @@ function PhotoGallery({
       // The parent component displays the error.
     } finally {
       setUpdatingPhotoId(null);
+    }
+  }
+
+  function handleEditCaption(photoId: number, currentCaption: string) {
+    setEditingPhotoId(photoId);
+    setEditedCaption(currentCaption);
+  }
+
+  function handleCancelCaptionEdit() {
+    setEditingPhotoId(null);
+    setEditedCaption("");
+  }
+
+  async function handleSaveCaption(photoId: number) {
+    setIsSavingCaption(true);
+
+    try {
+      await onUpdateCaption(photoId, editedCaption.trim());
+      setEditingPhotoId(null);
+      setEditedCaption("");
+    } catch {
+      // Keep the editor open so the user can retry.
+      // The parent component displays the error.
+    } finally {
+      setIsSavingCaption(false);
     }
   }
 
@@ -147,32 +178,86 @@ function PhotoGallery({
               </div>
 
               <div className="p-3">
-                <p className="min-h-5 text-sm text-text-secondary">
-                  {photo.caption || "No caption"}
-                </p>
+                {editingPhotoId === photo.id ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      value={editedCaption}
+                      onChange={(event) => setEditedCaption(event.target.value)}
+                      maxLength={200}
+                      autoFocus
+                      aria-label="Edit photo caption"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-muted focus:border-orchid focus:outline-none"
+                    />
 
-                <div className="mt-3 flex flex-col gap-2">
-                  {!photo.is_primary && (
-                    <button
-                      type="button"
-                      onClick={() => handleSetPrimary(photo.id)}
-                      disabled={updatingPhotoId !== null}
-                      className="text-left text-xs font-medium text-blush hover:text-lavender disabled:opacity-50"
-                    >
-                      {updatingPhotoId === photo.id
-                        ? "Updating..."
-                        : "Set as primary"}
-                    </button>
-                  )}
+                    <span className="text-right text-xs text-muted">
+                      {editedCaption.length}/200
+                    </span>
 
-                  <button
-                    type="button"
-                    onClick={() => void onDelete(photo.id)}
-                    className="text-left text-xs font-medium text-red-400 hover:text-red-300"
-                  >
-                    Remove photo
-                  </button>
-                </div>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveCaption(photo.id)}
+                        disabled={isSavingCaption}
+                        className="text-xs font-medium text-berry hover:text-berry-dark disabled:opacity-50"
+                      >
+                        {isSavingCaption ? "Saving..." : "Save"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleCancelCaptionEdit}
+                        disabled={isSavingCaption}
+                        className="text-xs font-medium text-muted hover:text-text disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="min-h-5 text-sm text-text-secondary">
+                      {photo.caption || "No caption"}
+                    </p>
+
+                    <div className="mt-3 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleEditCaption(photo.id, photo.caption)
+                        }
+                        disabled={isSavingCaption || editingPhotoId !== null}
+                        className="text-left text-xs font-medium text-blush hover:text-lavender disabled:opacity-50"
+                      >
+                        Edit caption
+                      </button>
+
+                      {!photo.is_primary && (
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimary(photo.id)}
+                          disabled={
+                            updatingPhotoId !== null || editingPhotoId !== null
+                          }
+                          className="text-left text-xs font-medium text-blush hover:text-lavender disabled:opacity-50"
+                        >
+                          {updatingPhotoId === photo.id
+                            ? "Updating..."
+                            : "Set as primary"}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => void onDelete(photo.id)}
+                        disabled={editingPhotoId !== null}
+                        className="text-left text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-50"
+                      >
+                        Remove photo
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -307,6 +392,31 @@ function PowderDetailContent() {
           ? err.message
           : "Could not update the primary photo."
       );
+      throw err;
+    }
+  }
+
+  async function handleUpdatePhotoCaption(photoId: number, caption: string) {
+    const token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      router.push("/login");
+      throw new Error("Your session has expired. Please log in again.");
+    }
+
+    try {
+      const updatedPhoto = await updatePowderPhoto(token, photoId, {
+        caption,
+      });
+
+      setPhotos((previous) =>
+        previous.map((photo) => (photo.id === photoId ? updatedPhoto : photo))
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not update photo caption."
+      );
+
       throw err;
     }
   }
@@ -528,6 +638,7 @@ function PowderDetailContent() {
           onUpload={handleUploadPhoto}
           onSetPrimary={handleSetPrimary}
           onDelete={handleDeletePhoto}
+          onUpdateCaption={handleUpdatePhotoCaption}
         />
 
         <PhotoGallery
@@ -537,6 +648,7 @@ function PowderDetailContent() {
           onUpload={handleUploadPhoto}
           onSetPrimary={handleSetPrimary}
           onDelete={handleDeletePhoto}
+          onUpdateCaption={handleUpdatePhotoCaption}
         />
 
         <PhotoGallery
@@ -546,11 +658,14 @@ function PowderDetailContent() {
           onUpload={handleUploadPhoto}
           onSetPrimary={handleSetPrimary}
           onDelete={handleDeletePhoto}
+          onUpdateCaption={handleUpdatePhotoCaption}
         />
       </div>
     </main>
   );
 }
+
+export const instant = false;
 
 export default function PowderDetailClient() {
   return <PowderDetailContent />;
