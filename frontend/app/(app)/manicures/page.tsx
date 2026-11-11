@@ -327,7 +327,7 @@ export default function ManicuresPage() {
                   htmlFor="rating-filter"
                   className="mb-1 block text-sm font-medium text-text-secondary"
                 >
-                  Minimum rating
+                  Rating
                 </label>
 
                 <select

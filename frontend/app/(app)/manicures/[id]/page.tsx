@@ -28,6 +28,10 @@ export default function ManicureDetailPage() {
   const [photos, setPhotos] = useState<ManicurePhoto[]>([]);
   const [powders, setPowders] = useState<Powder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<ManicurePhoto | null>(
+    null
+  );
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,6 +68,10 @@ export default function ManicureDetailPage() {
         setPhotos(photoData);
         setPowders(powderData);
         setTags(tagData);
+
+        // Initially display the primary photo, or the first photo if none is primary.
+        const primaryPhoto = photoData.find((photo) => photo.is_primary);
+        setSelectedPhoto(primaryPhoto ?? photoData[0] ?? null);
       } catch (err) {
         console.error("Failed to load manicure:", err);
         setError(
@@ -94,6 +102,60 @@ export default function ManicureDetailPage() {
       (a, b) => Number(b.is_primary) - Number(a.is_primary)
     );
   }, [photos]);
+
+  const galleryPhotos = sortedPhotos.length
+    ? sortedPhotos
+    : manicure?.primary_photo
+    ? [
+        {
+          id: -1,
+          image: manicure.primary_photo,
+          is_primary: true,
+          caption: "",
+        } as ManicurePhoto,
+      ]
+    : [];
+
+  const mainPhoto =
+    galleryPhotos.find((photo) => photo.id === selectedPhoto?.id) ??
+    galleryPhotos[0] ??
+    null;
+
+  const currentPhotoIndex = galleryPhotos.findIndex(
+    (photo) => photo.id === mainPhoto?.id
+  );
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsLightboxOpen(false);
+      }
+
+      if (event.key === "ArrowRight" && galleryPhotos.length > 1) {
+        const nextIndex = (currentPhotoIndex + 1) % galleryPhotos.length;
+        setSelectedPhoto(galleryPhotos[nextIndex]);
+      }
+
+      if (event.key === "ArrowLeft" && galleryPhotos.length > 1) {
+        const previousIndex =
+          (currentPhotoIndex - 1 + galleryPhotos.length) % galleryPhotos.length;
+
+        setSelectedPhoto(galleryPhotos[previousIndex]);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isLightboxOpen, galleryPhotos, currentPhotoIndex]);
 
   async function handleDelete() {
     if (!manicure) return;
@@ -173,21 +235,6 @@ export default function ManicureDetailPage() {
 
   if (!manicure) return null;
 
-  const galleryPhotos = sortedPhotos.length
-    ? sortedPhotos
-    : manicure.primary_photo
-    ? [
-        {
-          id: -1,
-          image: manicure.primary_photo,
-          is_primary: true,
-          caption: "",
-        } as ManicurePhoto,
-      ]
-    : [];
-
-  const mainPhoto = galleryPhotos[0];
-
   return (
     <main className="min-h-screen bg-[#211B25] px-4 py-8 text-[#F5EDF3] sm:px-6 lg:py-12">
       <div className="mx-auto max-w-6xl">
@@ -247,13 +294,18 @@ export default function ManicureDetailPage() {
           <section>
             {mainPhoto ? (
               <div className="space-y-4">
-                <div className="relative aspect-[4/5] max-h-[680px] overflow-hidden rounded-2xl border border-[#49394C] bg-[#2B222F]">
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  aria-label="Open photo in full-screen viewer"
+                  className="group relative block aspect-[4/5] max-h-[680px] w-full overflow-hidden rounded-2xl border border-[#49394C] bg-[#2B222F] text-left"
+                >
                   <Image
                     src={getImageUrl(mainPhoto.image)}
                     alt={mainPhoto.caption || manicure.title}
                     fill
                     unoptimized
-                    className="object-cover"
+                    className="object-cover transition duration-300 group-hover:scale-[1.02]"
                     priority
                   />
 
@@ -262,29 +314,63 @@ export default function ManicureDetailPage() {
                       Primary photo
                     </span>
                   )}
-                </div>
+
+                  <span className="absolute bottom-4 right-4 rounded-full bg-black/60 px-3 py-2 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
+                    <span className="flex items-center gap-2">
+                      <icon name="maximize-2" size="sm" />
+                      View full size
+                    </span>
+                  </span>
+                </button>
 
                 {galleryPhotos.length > 1 && (
-                  <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
-                    {galleryPhotos.map((photo) => (
-                      <div
-                        key={photo.id}
-                        className={`relative aspect-square overflow-hidden rounded-xl border bg-[#2B222F] ${
-                          photo.is_primary
-                            ? "border-[#C76B91]"
-                            : "border-[#49394C]"
-                        }`}
-                      >
-                        <Image
-                          src={getImageUrl(photo.image)}
-                          alt={photo.caption || "Manicure photo"}
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
-                      </div>
-                    ))}
+                  <div>
+                    <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
+                      {galleryPhotos.map((photo) => {
+                        const isSelected = mainPhoto?.id === photo.id;
+
+                        return (
+                          <button
+                            key={photo.id}
+                            type="button"
+                            onClick={() => setSelectedPhoto(photo)}
+                            aria-label={`View photo${
+                              photo.is_primary ? ", primary photo" : ""
+                            }`}
+                            aria-pressed={isSelected}
+                            className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-[#2B222F] transition ${
+                              isSelected
+                                ? "border-[#C026D3] ring-2 ring-[#C026D3]/20"
+                                : "border-[#49394C] hover:border-[#9D788F]"
+                            }`}
+                          >
+                            <Image
+                              src={getImageUrl(photo.image)}
+                              alt={photo.caption || "Manicure photo"}
+                              fill
+                              unoptimized
+                              sizes="(max-width: 640px) 25vw, 120px"
+                              className="object-cover transition duration-300 hover:scale-105"
+                            />
+
+                            {photo.is_primary && (
+                              <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-2 py-1 text-[9px] font-medium text-white backdrop-blur-sm">
+                                Primary
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <p className="mt-3 text-xs text-[#9D8D9E]">
+                      Select a thumbnail to view the photo. The primary photo
+                      setting won't change.
+                    </p>
                   </div>
+                )}
+                {mainPhoto.caption && (
+                  <p className="text-sm text-[#C8B9C8]">{mainPhoto.caption}</p>
                 )}
               </div>
             ) : (
@@ -298,6 +384,96 @@ export default function ManicureDetailPage() {
               </div>
             )}
           </section>
+
+          {isLightboxOpen && mainPhoto && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Manicure photo viewer"
+              onClick={() => setIsLightboxOpen(false)}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm"
+            >
+              <div
+                onClick={(event) => event.stopPropagation()}
+                className="relative flex h-full w-full max-w-6xl flex-col items-center justify-center"
+              >
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(false)}
+                  aria-label="Close photo viewer"
+                  className="absolute right-0 top-0 z-20 rounded-full border border-white/20 bg-[#35263B] p-3 text-white transition hover:bg-[#49394C]"
+                >
+                  <icon name="x" size="lg" />
+                </button>
+
+                {/* Photo counter */}
+                <div className="absolute left-0 top-2 z-20 rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white">
+                  {currentPhotoIndex + 1} / {galleryPhotos.length}
+                </div>
+
+                {/* Main image */}
+                <div className="relative flex h-[75vh] w-full items-center justify-center">
+                  <Image
+                    src={getImageUrl(mainPhoto.image)}
+                    alt={mainPhoto.caption || manicure.title}
+                    fill
+                    unoptimized
+                    sizes="100vw"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                {/* Navigation buttons */}
+                {galleryPhotos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const previousIndex =
+                          (currentPhotoIndex - 1 + galleryPhotos.length) %
+                          galleryPhotos.length;
+
+                        setSelectedPhoto(galleryPhotos[previousIndex]);
+                      }}
+                      aria-label="Previous photo"
+                      className="absolute left-0 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/20 bg-[#35263B]/90 p-3 text-white transition hover:bg-[#49394C]"
+                    >
+                      <icon name="chevron-left" size="xl" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextIndex =
+                          (currentPhotoIndex + 1) % galleryPhotos.length;
+
+                        setSelectedPhoto(galleryPhotos[nextIndex]);
+                      }}
+                      aria-label="Next photo"
+                      className="absolute right-0 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/20 bg-[#35263B]/90 p-3 text-white transition hover:bg-[#49394C]"
+                    >
+                      <icon name="chevron-right" size="xl" />
+                    </button>
+                  </>
+                )}
+
+                {/* Caption */}
+                <div className="mt-4 min-h-8 text-center">
+                  {mainPhoto.caption && (
+                    <p className="text-sm text-[#E8DCE8]">
+                      {mainPhoto.caption}
+                    </p>
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-[#9D8D9E]">
+                  Use ← → to navigate · Esc to close
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Details */}
           <div className="space-y-6">
