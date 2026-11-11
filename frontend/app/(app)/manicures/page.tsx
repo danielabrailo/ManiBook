@@ -30,6 +30,7 @@ export default function ManicuresPage() {
   const [nailLength, setNailLength] = useState("");
   const [rating, setRating] = useState("");
   const [ordering, setOrdering] = useState("-completed_at");
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   // Load manicures whenever filters change.
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function ManicuresPage() {
         nail_length: nailLength,
         rating: rating ? Number(rating) : undefined,
         ordering,
+        tags: selectedTagIds,
       };
 
       try {
@@ -85,7 +87,16 @@ export default function ManicuresPage() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [router, search, nailShape, technique, nailLength, rating, ordering]);
+  }, [
+    router,
+    search,
+    nailShape,
+    technique,
+    nailLength,
+    rating,
+    ordering,
+    selectedTagIds,
+  ]);
 
   // Load tags once, separately from the manicure list.
   useEffect(() => {
@@ -127,6 +138,15 @@ export default function ManicuresPage() {
     setNailLength("");
     setRating("");
     setOrdering("-completed_at");
+    setSelectedTagIds([]);
+  }
+
+  function toggleTag(tagId: number) {
+    setSelectedTagIds((previous) =>
+      previous.includes(tagId)
+        ? previous.filter((id) => id !== tagId)
+        : [...previous, tagId]
+    );
   }
 
   const hasActiveFilters =
@@ -134,11 +154,12 @@ export default function ManicuresPage() {
     nailShape !== "" ||
     technique !== "" ||
     nailLength !== "" ||
-    rating !== "";
+    rating !== "" ||
+    selectedTagIds.length > 0;
 
-  const activeFilterCount = [nailShape, technique, nailLength, rating].filter(
-    Boolean
-  ).length;
+  const activeFilterCount =
+    [nailShape, technique, nailLength, rating].filter(Boolean).length +
+    (selectedTagIds.length > 0 ? 1 : 0);
 
   function formatDate(date: string) {
     // Avoid timezone shifts when parsing a date-only value.
@@ -347,6 +368,37 @@ export default function ManicuresPage() {
                 </select>
               </div>
             </div>
+
+            {/* Tag filters */}
+            {tags.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-medium text-text-secondary">
+                  Filter by tags
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const isSelected = selectedTagIds.includes(tag.id);
+
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        aria-pressed={isSelected}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          isSelected
+                            ? "border-neon bg-neon/20 text-lavender"
+                            : "border-border-strong bg-background text-text-secondary hover:border-neon hover:text-lavender"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Sorting */}
             <div className="mt-5 flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">

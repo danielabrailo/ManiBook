@@ -2,6 +2,7 @@ from django.db.models import Prefetch
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
+from .filters import ManicureFilter
 
 from .models import Powder, PowderPhoto, Manicure, ManicurePhoto, Tag
 from .serializers import (
@@ -98,12 +99,7 @@ class ManicureViewSet(viewsets.ModelViewSet):
     serializer_class = ManicureSerializer
     permission_classes = [IsAuthenticated]
 
-    filterset_fields = [
-        "nail_shape",
-        "technique",
-        "nail_length",
-        "rating",
-    ]
+    filterset_class = ManicureFilter
 
     search_fields = ["title", "notes"]
 

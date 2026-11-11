@@ -245,6 +245,7 @@ export interface ManicureFilters {
   nail_length?: string;
   rating?: number;
   ordering?: string;
+  tags?: number[];
 }
 
 export type ManicureInput = Omit<
@@ -567,6 +568,10 @@ export async function getManicures(
 
   if (filters.ordering) {
     params.set("ordering", filters.ordering);
+  }
+
+  if (filters.tags && filters.tags.length > 0) {
+    params.set("tags", filters.tags.join(","));
   }
 
   const response = await authenticatedFetch(
