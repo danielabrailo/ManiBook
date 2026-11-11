@@ -206,6 +206,52 @@ export interface PowderFilters {
   tags?: number[];
 }
 
+export interface Manicure {
+  id: number;
+  title: string;
+  completed_at: string;
+  nail_shape:
+    | "almond"
+    | "oval"
+    | "square"
+    | "coffin"
+    | "stiletto"
+    | "round"
+    | "other";
+  technique: "solid" | "french" | "ombre" | "nail_art" | "mixed" | "other";
+  nail_length: "extra_short" | "short" | "medium" | "long" | "extra_long";
+  rating: number | null;
+  notes: string;
+  wear_duration_days: number;
+  removal_date: string | null;
+  powders: number[];
+  tags: number[];
+  primary_photo: string | null;
+}
+
+export interface ManicurePhoto {
+  id: number;
+  manicure: number;
+  image: string;
+  caption: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface ManicureFilters {
+  search?: string;
+  nail_shape?: string;
+  technique?: string;
+  nail_length?: string;
+  rating?: number;
+  ordering?: string;
+}
+
+export type ManicureInput = Omit<
+  Manicure,
+  "id" | "wear_duration_days" | "primary_photo"
+>;
+
 // ============================================================
 // Tags
 // ============================================================
@@ -497,5 +543,228 @@ export async function deletePowderPhoto(
 
   if (!response.ok) {
     throw new Error("Could not delete this photo.");
+  }
+}
+
+// ============================================================
+// Manicures
+// ============================================================
+
+export async function getManicures(
+  accessToken: string,
+  filters: ManicureFilters = {}
+): Promise<Manicure[]> {
+  const params = new URLSearchParams();
+
+  if (filters.search) params.set("search", filters.search);
+  if (filters.nail_shape) params.set("nail_shape", filters.nail_shape);
+  if (filters.technique) params.set("technique", filters.technique);
+  if (filters.nail_length) params.set("nail_length", filters.nail_length);
+
+  if (filters.rating !== undefined) {
+    params.set("rating", String(filters.rating));
+  }
+
+  if (filters.ordering) {
+    params.set("ordering", filters.ordering);
+  }
+
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicures/?${params.toString()}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load manicures.");
+  }
+
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : data.results;
+}
+
+export async function getManicure(
+  accessToken: string,
+  id: number
+): Promise<Manicure> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicures/${id}/`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load this manicure.");
+  }
+
+  return response.json();
+}
+
+export async function createManicure(
+  accessToken: string,
+  manicureData: ManicureInput
+): Promise<Manicure> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicures/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(manicureData),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function updateManicure(
+  accessToken: string,
+  id: number,
+  manicureData: Partial<ManicureInput>
+): Promise<Manicure> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicures/${id}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(manicureData),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function deleteManicure(
+  accessToken: string,
+  id: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicures/${id}/`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not delete this manicure.");
+  }
+}
+
+// ============================================================
+// Manicure Photos
+// ============================================================
+
+export async function getManicurePhotos(
+  accessToken: string,
+  manicureId: number
+): Promise<ManicurePhoto[]> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicure-photos/?manicure=${manicureId}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load manicure photos.");
+  }
+
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : data.results;
+}
+
+export async function uploadManicurePhoto(
+  accessToken: string,
+  manicureId: number,
+  image: File,
+  isPrimary: boolean = false,
+  caption: string = ""
+): Promise<ManicurePhoto> {
+  const formData = new FormData();
+
+  formData.append("manicure", String(manicureId));
+  formData.append("image", image);
+  formData.append("caption", caption);
+  formData.append("is_primary", String(isPrimary));
+
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicure-photos/`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function updateManicurePhoto(
+  accessToken: string,
+  photoId: number,
+  updates: Partial<Pick<ManicurePhoto, "caption" | "is_primary">>
+): Promise<ManicurePhoto> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicure-photos/${photoId}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function deleteManicurePhoto(
+  accessToken: string,
+  photoId: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/manicure-photos/${photoId}/`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not delete this manicure photo.");
   }
 }

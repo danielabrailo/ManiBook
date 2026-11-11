@@ -45,7 +45,6 @@ class PowderSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-
 class ManicureSerializer(serializers.ModelSerializer):
     powders = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -58,6 +57,7 @@ class ManicureSerializer(serializers.ModelSerializer):
         required=False,
     )
     wear_duration_days = serializers.IntegerField(read_only=True)
+    primary_photo = serializers.SerializerMethodField()
 
     class Meta:
         model = Manicure
@@ -74,22 +74,42 @@ class ManicureSerializer(serializers.ModelSerializer):
             "removal_date",
             "powders",
             "tags",
+            "primary_photo",
         ]
-        read_only_fields = ["id", "wear_duration_days"]
+        read_only_fields = [
+            "id",
+            "wear_duration_days",
+            "primary_photo",
+        ]
 
     def get_fields(self):
         fields = super().get_fields()
         request = self.context.get("request")
 
         if request and request.user.is_authenticated:
-            fields["powders"].queryset = Powder.objects.filter(
+            fields["powders"].child_relation.queryset = Powder.objects.filter(
                 owner=request.user
             )
-            fields["tags"].queryset = Tag.objects.filter(
+
+            fields["tags"].child_relation.queryset = Tag.objects.filter(
                 owner=request.user
             )
 
         return fields
+
+    def get_primary_photo(self, obj):
+        # Uses the prefetched photos when available.
+        photos = getattr(obj, "_prefetched_objects_cache", {}).get("photos")
+
+        if photos is None:
+            photos = obj.photos.all()
+
+        primary_photo = next(
+            (photo for photo in photos if photo.is_primary),
+            None,
+        )
+
+        return primary_photo.image.url if primary_photo else None
 
     def validate(self, attrs):
         from django.utils import timezone

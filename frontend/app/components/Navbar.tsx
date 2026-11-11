@@ -10,6 +10,9 @@ export default function Navbar() {
   const isCollectionActive =
     pathname === "/collection" || pathname.startsWith("/collection/");
 
+  const isManicuresActive =
+    pathname === "/manicures" || pathname.startsWith("/manicures/");
+
   function handleLogout() {
     sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("refreshToken");
@@ -42,14 +45,17 @@ export default function Navbar() {
             Collection
           </Link>
 
-          <span
-            aria-disabled="true"
-            title="Coming soon"
-            className="cursor-not-allowed text-sm text-muted"
+          <Link
+            href="/manicures"
+            aria-current={isManicuresActive ? "page" : undefined}
+            className={`text-sm font-medium transition-colors ${
+              isManicuresActive
+                ? "text-blush"
+                : "text-text-secondary hover:text-text"
+            }`}
           >
             Manicures
-            <span className="ml-1.5 text-xs text-muted/70">Soon</span>
-          </span>
+          </Link>
 
           <span
             aria-disabled="true"
