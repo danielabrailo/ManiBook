@@ -1,6 +1,9 @@
 
 from django.conf import settings
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
+from django.db.models import Q
 
 
 class Powder(models.Model):
@@ -132,6 +135,13 @@ class Manicure(models.Model):
         MIXED = "mixed", "Mixed"
         OTHER = "other", "Other"
 
+    class nailLength(models.TextChoices):
+        SHORT = "short", "Short"
+        MEDIUM = "medium", "Medium"
+        LONG = "long", "Long"
+        EXTRA_SHORT = "extra_short", "Extra Short"
+        EXTRA_LONG = "extra_long", "Extra Long"
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -147,9 +157,20 @@ class Manicure(models.Model):
         max_length=20, choices=Technique.choices,
         default=Technique.SOLID,
     )
-    nail_length = models.CharField(max_length=20, blank=True)
+    nail_length = models.CharField(
+        max_length=20, choices=nailLength.choices,
+        default=nailLength.SHORT,
+    )
+    rating = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(10),
+        ],
+    )
+
     notes = models.TextField(blank=True)
-    wear_duration_days = models.PositiveIntegerField(null=True, blank=True)
     removal_date = models.DateField(null=True, blank=True)
     powders = models.ManyToManyField(
         Powder,
@@ -160,8 +181,22 @@ class Manicure(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def wear_duration_days(self):
+        end_date = self.removal_date or timezone.localdate()
+        return (end_date - self.completed_at).days
+
     class Meta:
         ordering = ["-completed_at", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(rating__isnull=True)
+                    | Q(rating__gte=1, rating__lte=10)
+                ),
+                name="manicure_rating_between_1_and_10",
+            ),
+        ]
 
     def __str__(self):
         return self.title
@@ -195,6 +230,37 @@ class ManicurePhoto(models.Model):
     caption = models.CharField(max_length=200, blank=True)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["manicure"],
+                condition=models.Q(is_primary=True),
+                name="one_primary_photo_per_manicure",
+            ),
+        ]
+        
+    def save(self, *args, **kwargs):
+        old_image = None
+
+        if self.pk:
+            try:
+                old_instance = ManicurePhoto.objects.get(pk=self.pk)
+                old_image = old_instance.image
+            except ManicurePhoto.DoesNotExist:
+                pass
+
+        super().save(*args, **kwargs)
+
+        if old_image and old_image != self.image:
+            old_image.delete(save=False)
+
+
+    def delete(self, *args, **kwargs):
+        image = self.image
+        super().delete(*args, **kwargs)
+
+        if image:
+            image.delete(save=False)
 
 
 class Design(models.Model):

@@ -3,11 +3,13 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 
-from .models import Powder, PowderPhoto, Tag
+from .models import Powder, PowderPhoto, Manicure, ManicurePhoto, Tag
 from .serializers import (
     PowderSerializer,
     PowderPhotoSerializer,
     TagSerializer,
+    ManicureSerializer,
+    ManicurePhotoSerializer,
 )
 
 
@@ -89,4 +91,48 @@ class TagViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Tag.objects.filter(
             owner=self.request.user
+        )
+
+
+class ManicureViewSet(viewsets.ModelViewSet):
+    serializer_class = ManicureSerializer
+    permission_classes = [IsAuthenticated]
+
+    filterset_fields = [
+        "nail_shape",
+        "technique",
+        "nail_length",
+        "rating",
+    ]
+
+    search_fields = ["title", "notes"]
+
+    ordering_fields = [
+        "completed_at",
+        "created_at",
+        "updated_at",
+        "rating",
+    ]
+
+    def get_queryset(self):
+        return (
+            Manicure.objects
+            .filter(owner=self.request.user)
+            .select_related("owner")
+            .prefetch_related("powders", "tags", "photos")
+            .distinct()
+        )
+
+
+class ManicurePhotoViewSet(viewsets.ModelViewSet):
+    serializer_class = ManicurePhotoSerializer
+    permission_classes = [IsAuthenticated]
+
+    filterset_fields = ["manicure", "is_primary"]
+
+    def get_queryset(self):
+        return (
+            ManicurePhoto.objects
+            .filter(manicure__owner=self.request.user)
+            .select_related("manicure")
         )
