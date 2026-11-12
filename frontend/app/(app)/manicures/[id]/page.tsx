@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Maximize2, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   deleteManicure,
@@ -317,7 +318,7 @@ export default function ManicureDetailPage() {
 
                   <span className="absolute bottom-4 right-4 rounded-full bg-black/60 px-3 py-2 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
                     <span className="flex items-center gap-2">
-                      <icon name="maximize-2" size="sm" />
+                      <Maximize2 size={16} />
                       View full size
                     </span>
                   </span>
@@ -404,7 +405,7 @@ export default function ManicureDetailPage() {
                   aria-label="Close photo viewer"
                   className="absolute right-0 top-0 z-20 rounded-full border border-white/20 bg-[#35263B] p-3 text-white transition hover:bg-[#49394C]"
                 >
-                  <icon name="x" size="lg" />
+                  <X size={24} />
                 </button>
 
                 {/* Photo counter */}
@@ -440,7 +441,7 @@ export default function ManicureDetailPage() {
                       aria-label="Previous photo"
                       className="absolute left-0 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/20 bg-[#35263B]/90 p-3 text-white transition hover:bg-[#49394C]"
                     >
-                      <icon name="chevron-left" size="xl" />
+                      <ChevronLeft size={28} />
                     </button>
 
                     <button
@@ -454,7 +455,7 @@ export default function ManicureDetailPage() {
                       aria-label="Next photo"
                       className="absolute right-0 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/20 bg-[#35263B]/90 p-3 text-white transition hover:bg-[#49394C]"
                     >
-                      <icon name="chevron-right" size="xl" />
+                      <ChevronRight size={28} />
                     </button>
                   </>
                 )}

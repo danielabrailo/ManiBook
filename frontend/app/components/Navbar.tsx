@@ -57,14 +57,12 @@ export default function Navbar() {
             Manicures
           </Link>
 
-          <span
-            aria-disabled="true"
-            title="Coming soon"
-            className="cursor-not-allowed text-sm text-muted"
+          <Link
+            href="/designs"
+            className={`text-sm font-medium transition-colors text-blush`}
           >
             Design ideas
-            <span className="ml-1.5 text-xs text-muted/70">Soon</span>
-          </span>
+          </Link>
 
           <button
             type="button"

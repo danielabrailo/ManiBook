@@ -254,6 +254,49 @@ export type ManicureInput = Omit<
 >;
 
 // ============================================================
+// Designs
+// ============================================================
+
+export interface Design {
+  id: number;
+  title: string;
+  source: "manual" | "ai" | "inspiration";
+  style: string;
+  nail_shape: string;
+  instructions: string;
+  status: "idea" | "planned" | "tried" | "archived";
+  powders: number[];
+  tags: number[];
+  photos: DesignPhoto[];
+  primary_photo: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DesignPhoto {
+  id: number;
+  design: number;
+  image: string;
+  caption: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface DesignFilters {
+  search?: string;
+  source?: string;
+  status?: string;
+  style?: string;
+  nail_shape?: string;
+  ordering?: string;
+}
+
+export type DesignInput = Omit<
+  Design,
+  "id" | "photos" | "primary_photo" | "created_at" | "updated_at"
+>;
+
+// ============================================================
 // Tags
 // ============================================================
 
@@ -348,7 +391,10 @@ export async function getPowders(
 
 export async function createPowder(
   accessToken: string,
-  powderData: Omit<Powder, "id" | "created_at" | "updated_at" | "tags"> & {
+  powderData: Omit<
+    Powder,
+    "id" | "created_at" | "updated_at" | "tags" | "primary_photo"
+  > & {
     tags?: number[];
   }
 ): Promise<Powder> {
@@ -771,5 +817,226 @@ export async function deleteManicurePhoto(
 
   if (!response.ok) {
     throw new Error("Could not delete this manicure photo.");
+  }
+}
+
+// ============================================================
+// Designs
+// ============================================================
+
+export async function getDesigns(
+  accessToken: string,
+  filters: DesignFilters = {}
+): Promise<Design[]> {
+  const params = new URLSearchParams();
+
+  if (filters.search) params.set("search", filters.search);
+  if (filters.source) params.set("source", filters.source);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.style) params.set("style", filters.style);
+  if (filters.nail_shape) {
+    params.set("nail_shape", filters.nail_shape);
+  }
+  if (filters.ordering) {
+    params.set("ordering", filters.ordering);
+  }
+
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/?${params.toString()}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load designs.");
+  }
+
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : data.results;
+}
+
+export async function getDesign(
+  accessToken: string,
+  id: number
+): Promise<Design> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/${id}/`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load this design.");
+  }
+
+  return response.json();
+}
+
+export async function createDesign(
+  accessToken: string,
+  designData: DesignInput
+): Promise<Design> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(designData),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function updateDesign(
+  accessToken: string,
+  id: number,
+  designData: Partial<DesignInput>
+): Promise<Design> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/${id}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(designData),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function deleteDesign(
+  accessToken: string,
+  id: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/${id}/`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not delete this design.");
+  }
+}
+
+// ============================================================
+// Design Photos
+// ============================================================
+
+export async function getDesignPhotos(
+  accessToken: string,
+  designId: number
+): Promise<DesignPhoto[]> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/design-photos/?design=${designId}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load design photos.");
+  }
+
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : data.results;
+}
+
+export async function uploadDesignPhoto(
+  accessToken: string,
+  designId: number,
+  image: File,
+  isPrimary: boolean = false,
+  caption: string = ""
+): Promise<DesignPhoto> {
+  const formData = new FormData();
+
+  formData.append("design", String(designId));
+  formData.append("image", image);
+  formData.append("caption", caption);
+  formData.append("is_primary", String(isPrimary));
+
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/design-photos/`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function updateDesignPhoto(
+  accessToken: string,
+  photoId: number,
+  updates: Partial<Pick<DesignPhoto, "caption" | "is_primary">>
+): Promise<DesignPhoto> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/design-photos/${photoId}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(JSON.stringify(errorData));
+  }
+
+  return response.json();
+}
+
+export async function deleteDesignPhoto(
+  accessToken: string,
+  photoId: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/design-photos/${photoId}/`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not delete this design photo.");
   }
 }

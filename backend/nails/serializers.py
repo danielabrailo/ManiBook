@@ -1,5 +1,13 @@
 from rest_framework import serializers
-from .models import Powder, Manicure, PowderPhoto, Tag, ManicurePhoto
+from .models import (
+    Powder,
+    Manicure,
+    PowderPhoto,
+    Tag,
+    ManicurePhoto,
+    Design,
+    DesignPhoto,
+)
 from django.db import transaction
 
 class PowderSerializer(serializers.ModelSerializer):
@@ -233,6 +241,181 @@ class ManicurePhotoSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
+class DesignPhotoSerializer(serializers.ModelSerializer):
+    design = serializers.PrimaryKeyRelatedField(
+        queryset=Design.objects.none()
+    )
+
+    class Meta:
+        model = DesignPhoto
+        fields = [
+            "id",
+            "design",
+            "image",
+            "caption",
+            "is_primary",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated:
+            fields["design"].queryset = Design.objects.filter(
+                owner=request.user
+            )
+
+        return fields
+
+    def validate_image(self, image):
+        max_size = 5 * 1024 * 1024
+
+        if image.size > max_size:
+            raise serializers.ValidationError(
+                "Image size cannot exceed 5 MB."
+            )
+
+        return image
+
+    @transaction.atomic
+    def create(self, validated_data):
+        design = validated_data["design"]
+        is_primary = validated_data.get("is_primary", False)
+
+        if is_primary:
+            DesignPhoto.objects.filter(
+                design=design,
+                is_primary=True,
+            ).update(is_primary=False)
+
+        return super().create(validated_data)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        design = validated_data.get("design", instance.design)
+        is_primary = validated_data.get(
+            "is_primary",
+            instance.is_primary,
+        )
+
+        if is_primary:
+            DesignPhoto.objects.filter(
+                design=design,
+                is_primary=True,
+            ).exclude(pk=instance.pk).update(is_primary=False)
+
+        return super().update(instance, validated_data)
+
+class DesignSerializer(serializers.ModelSerializer):
+    powders = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Powder.objects.none(),
+        required=False,
+    )
+
+    tags = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Tag.objects.none(),
+        required=False,
+    )
+
+    photos = DesignPhotoSerializer(many=True, read_only=True)
+    primary_photo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Design
+        fields = [
+            "id",
+            "title",
+            "source",
+            "style",
+            "nail_shape",
+            "instructions",
+            "status",
+            "powders",
+            "tags",
+            "photos",
+            "primary_photo",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "photos",
+            "primary_photo",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated:
+            fields["powders"].child_relation.queryset = (
+                Powder.objects.filter(owner=request.user)
+            )
+
+            fields["tags"].child_relation.queryset = (
+                Tag.objects.filter(owner=request.user)
+            )
+
+        return fields
+
+    def get_primary_photo(self, obj):
+        photos = getattr(
+            obj,
+            "_prefetched_objects_cache",
+            {},
+        ).get("photos")
+
+        if photos is None:
+            photos = obj.photos.all()
+
+        primary_photo = next(
+            (photo for photo in photos if photo.is_primary),
+            None,
+        )
+
+        if primary_photo and primary_photo.image:
+            return primary_photo.image.url
+
+        return None
+
+    @transaction.atomic
+    def create(self, validated_data):
+        powders = validated_data.pop("powders", [])
+        tags = validated_data.pop("tags", [])
+
+        design = Design.objects.create(
+            owner=self.context["request"].user,
+            **validated_data,
+        )
+
+        design.powders.set(powders)
+        design.tags.set(tags)
+
+        return design
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        powders = validated_data.pop("powders", None)
+        tags = validated_data.pop("tags", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        if powders is not None:
+            instance.powders.set(powders)
+
+        if tags is not None:
+            instance.tags.set(tags)
+
+        return instance
 
 class PowderPhotoSerializer(serializers.ModelSerializer):
     powder = serializers.PrimaryKeyRelatedField(

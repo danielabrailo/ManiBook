@@ -230,6 +230,7 @@ class ManicurePhoto(models.Model):
     caption = models.CharField(max_length=200, blank=True)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -238,29 +239,6 @@ class ManicurePhoto(models.Model):
                 name="one_primary_photo_per_manicure",
             ),
         ]
-        
-    def save(self, *args, **kwargs):
-        old_image = None
-
-        if self.pk:
-            try:
-                old_instance = ManicurePhoto.objects.get(pk=self.pk)
-                old_image = old_instance.image
-            except ManicurePhoto.DoesNotExist:
-                pass
-
-        super().save(*args, **kwargs)
-
-        if old_image and old_image != self.image:
-            old_image.delete(save=False)
-
-
-    def delete(self, *args, **kwargs):
-        image = self.image
-        super().delete(*args, **kwargs)
-
-        if image:
-            image.delete(save=False)
 
 
 class Design(models.Model):
@@ -324,7 +302,17 @@ class DesignPhoto(models.Model):
     )
     image = models.ImageField(upload_to="designs/%Y/%m/")
     caption = models.CharField(max_length=200, blank=True)
+    is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["design"],
+                condition=models.Q(is_primary=True),
+                name="one_primary_photo_per_design",
+            ),
+        ]
 
 
 class Tag(models.Model):

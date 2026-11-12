@@ -4,16 +4,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from .filters import ManicureFilter
 
-from .models import Powder, PowderPhoto, Manicure, ManicurePhoto, Tag
+from .models import (
+    Powder,
+    PowderPhoto,
+    Manicure,
+    ManicurePhoto,
+    Tag,
+    Design,
+    DesignPhoto,
+)
 from .serializers import (
     PowderSerializer,
     PowderPhotoSerializer,
     TagSerializer,
     ManicureSerializer,
     ManicurePhotoSerializer,
+    DesignSerializer,
+    DesignPhotoSerializer,
 )
-
-
 
 class PowderViewSet(viewsets.ModelViewSet):
     serializer_class = PowderSerializer
@@ -132,3 +140,69 @@ class ManicurePhotoViewSet(viewsets.ModelViewSet):
             .filter(manicure__owner=self.request.user)
             .select_related("manicure")
         )
+
+class DesignViewSet(viewsets.ModelViewSet):
+    serializer_class = DesignSerializer
+    permission_classes = [IsAuthenticated]
+
+    filterset_fields = [
+        "source",
+        "status",
+        "style",
+        "nail_shape",
+    ]
+
+    search_fields = [
+        "title",
+        "style",
+        "instructions",
+    ]
+
+    ordering_fields = [
+        "title",
+        "source",
+        "status",
+        "created_at",
+        "updated_at",
+    ]
+
+    ordering = ["-updated_at"]
+
+    def get_queryset(self):
+        return (
+            Design.objects.filter(owner=self.request.user)
+            .select_related("owner")
+            .prefetch_related(
+                "powders",
+                "tags",
+                "photos",
+            )
+        )
+
+class DesignPhotoViewSet(viewsets.ModelViewSet):
+    serializer_class = DesignPhotoSerializer
+    permission_classes = [IsAuthenticated]
+
+    filterset_fields = [
+        "design",
+        "is_primary",
+    ]
+
+    search_fields = [
+        "caption",
+    ]
+
+    ordering_fields = [
+        "created_at",
+    ]
+
+    ordering = ["created_at"]
+
+    def get_queryset(self):
+        return (
+            DesignPhoto.objects.filter(
+                design__owner=self.request.user
+            )
+            .select_related("design")
+        )
+

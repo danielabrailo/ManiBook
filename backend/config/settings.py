@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     "django_filters",
     # ManiBook applications
     "accounts",
-    "nails",
+    "nails.apps.NailsConfig",
 ]
 
 MIDDLEWARE = [
