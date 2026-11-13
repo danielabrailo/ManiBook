@@ -289,6 +289,7 @@ export interface DesignFilters {
   style?: string;
   nail_shape?: string;
   ordering?: string;
+  tags?: number[];
 }
 
 export type DesignInput = Omit<
@@ -840,6 +841,9 @@ export async function getDesigns(
   if (filters.ordering) {
     params.set("ordering", filters.ordering);
   }
+  filters.tags?.forEach((tagId) => {
+    params.append("tags", String(tagId));
+  });
 
   const response = await authenticatedFetch(
     accessToken,

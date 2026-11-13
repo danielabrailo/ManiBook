@@ -30,6 +30,7 @@ export default function DesignsPage() {
   const [style, setStyle] = useState("");
   const [nailShape, setNailShape] = useState("");
   const [ordering, setOrdering] = useState("-updated_at");
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   // Load designs whenever filters change.
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function DesignsPage() {
         style,
         nail_shape: nailShape,
         ordering,
+        tags: selectedTagIds,
       };
 
       try {
@@ -85,7 +87,16 @@ export default function DesignsPage() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [router, search, source, status, style, nailShape, ordering]);
+  }, [
+    router,
+    search,
+    source,
+    status,
+    style,
+    nailShape,
+    ordering,
+    selectedTagIds,
+  ]);
 
   // Load tags separately from the design list.
   useEffect(() => {
@@ -126,6 +137,7 @@ export default function DesignsPage() {
     setStatus("");
     setStyle("");
     setNailShape("");
+    setSelectedTagIds([]);
     setOrdering("-updated_at");
   }
 
@@ -134,11 +146,12 @@ export default function DesignsPage() {
     source !== "" ||
     status !== "" ||
     style !== "" ||
-    nailShape !== "";
+    nailShape !== "" ||
+    selectedTagIds.length > 0;
 
-  const activeFilterCount = [source, status, style, nailShape].filter(
-    Boolean
-  ).length;
+  const activeFilterCount =
+    [source, status, style, nailShape].filter(Boolean).length +
+    (selectedTagIds.length > 0 ? 1 : 0);
 
   function formatChoice(value: string) {
     return value
@@ -327,6 +340,53 @@ export default function DesignsPage() {
                   <option value="other">Other</option>
                 </select>
               </div>
+            </div>
+
+            {/* Tag filters */}
+            <div className="mt-5">
+              <p className="mb-2 text-sm font-medium text-text-secondary">
+                Tags
+              </p>
+
+              {tags.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag) => {
+                      const isSelected = selectedTagIds.includes(tag.id);
+
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => {
+                            setSelectedTagIds((previous) =>
+                              isSelected
+                                ? previous.filter((id) => id !== tag.id)
+                                : [...previous, tag.id]
+                            );
+                          }}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            isSelected
+                              ? "border-neon bg-neon/20 text-lavender"
+                              : "border-border-strong bg-surface-elevated text-text-secondary hover:border-neon hover:text-lavender"
+                          }`}
+                        >
+                          {tag.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-2 text-xs text-muted">
+                    Show designs matching any selected tag.
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted">
+                  Create tags in your collection to organise designs.
+                </p>
+              )}
             </div>
 
             {/* Sorting */}
