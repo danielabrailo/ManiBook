@@ -8,6 +8,10 @@ from .models import (
     Design,
     DesignPhoto,
 )
+from .services.gemini_client import (
+    validate_design_plan,
+    GeminiGenerationError,
+)
 from django.db import transaction
 
 class PowderSerializer(serializers.ModelSerializer):
@@ -333,6 +337,7 @@ class DesignSerializer(serializers.ModelSerializer):
             "style",
             "nail_shape",
             "instructions",
+            "generated_plan",
             "status",
             "powders",
             "tags",
@@ -343,6 +348,7 @@ class DesignSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "generated_plan",
             "photos",
             "primary_photo",
             "created_at",
@@ -416,6 +422,249 @@ class DesignSerializer(serializers.ModelSerializer):
             instance.tags.set(tags)
 
         return instance
+
+
+class GenerateDesignRequestSerializer(serializers.Serializer):
+    COLOUR_MODES = [
+        ("any", "Any colours in my collection"),
+        ("underused", "Prioritise rarely used colours"),
+        ("selected", "Only manually selected powders"),
+    ]
+
+    STYLES = [
+        ("minimalist", "Minimalist"),
+        ("romantic_coquette", "Romantic / Coquette"),
+        ("gothic_witchy", "Gothic / Witchy"),
+        ("elegant", "Elegant"),
+        ("bold_maximalist", "Bold / Maximalist"),
+        ("seasonal", "Seasonal"),
+    ]
+
+    COMPLEXITIES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+    ]
+
+    OCCASIONS = [
+        ("everyday", "Everyday"),
+        ("party_event", "Party / Event"),
+        ("seasonal", "Seasonal"),
+    ]
+
+    colour_mode = serializers.ChoiceField(choices=COLOUR_MODES)
+
+    selected_powder_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Powder.objects.none(),
+        required=False,
+        write_only=True,
+    )
+
+    finishes = serializers.ListField(
+        child=serializers.ChoiceField(choices=Powder.Finish.choices),
+        required=False,
+        default=list,
+    )
+
+    colour_families = serializers.ListField(
+        child=serializers.ChoiceField(choices=Powder.ColourFamily.choices),
+        required=False,
+        default=list,
+    )
+
+    undertones = serializers.ListField(
+        child=serializers.ChoiceField(choices=Powder.Undertone.choices),
+        required=False,
+        default=list,
+    )
+
+    favourites_only = serializers.BooleanField(default=False)
+
+    palette_size = serializers.IntegerField(
+        min_value=1,
+        max_value=5,
+        default=3,
+    )
+
+    style = serializers.ChoiceField(choices=STYLES)
+
+    complexity = serializers.ChoiceField(choices=COMPLEXITIES)
+
+    occasion = serializers.ChoiceField(
+        choices=OCCASIONS,
+        default="everyday",
+    )
+
+    nail_shape = serializers.ChoiceField(
+        choices=Manicure.NailShape.choices,
+        required=False,
+    )
+
+    nail_length = serializers.ChoiceField(
+        choices=Manicure.nailLength.choices,
+        required=False,
+    )
+
+    preferences = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+    )
+
+    def get_fields(self):
+        fields = super().get_fields()
+
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated:
+            fields["selected_powder_ids"].child_relation.queryset = (
+                Powder.objects.filter(owner=request.user)
+            )
+
+        return fields
+
+    def validate(self, attrs):
+        colour_mode = attrs["colour_mode"]
+        selected_powders = attrs.get("selected_powder_ids", [])
+
+        if colour_mode == "selected" and not selected_powders:
+            raise serializers.ValidationError({
+                "selected_powder_ids": (
+                    "Select at least one powder when using manual selection."
+                )
+            })
+
+        if colour_mode != "selected" and selected_powders:
+            raise serializers.ValidationError({
+                "selected_powder_ids": (
+                    "Selected powders can only be provided when "
+                    "colour_mode is 'selected'."
+                )
+            })
+
+        selected_ids = [powder.id for powder in selected_powders]
+
+        if len(selected_ids) != len(set(selected_ids)):
+            raise serializers.ValidationError({
+                "selected_powder_ids": "Duplicate powder IDs are not allowed."
+            })
+
+        return attrs
+
+class SaveGeneratedDesignSerializer(serializers.Serializer):
+    generated_plan = serializers.JSONField()
+
+    style = serializers.ChoiceField(
+        choices=GenerateDesignRequestSerializer.STYLES,
+    )
+
+    nail_shape = serializers.ChoiceField(
+        choices=Manicure.NailShape.choices,
+        required=False,
+        allow_blank=True,
+    )
+
+    def validate_generated_plan(self, plan):
+        if not isinstance(plan, dict):
+            raise serializers.ValidationError(
+                "The generated design must be a valid object."
+            )
+
+        palette = plan.get("palette")
+
+        if not isinstance(palette, list) or not 1 <= len(palette) <= 5:
+            raise serializers.ValidationError(
+                "The design palette must contain between 1 and 5 powders."
+            )
+
+        # Extract IDs only after checking the palette structure.
+        powder_ids = []
+
+        for item in palette:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(
+                    "Invalid palette entry."
+                )
+
+            powder_id = item.get("powder_id")
+
+            # Use exact type checking because bool is a subclass of int.
+            if type(powder_id) is not int or powder_id <= 0:
+                raise serializers.ValidationError(
+                    "Every palette entry must contain a valid powder ID."
+                )
+
+            powder_ids.append(powder_id)
+
+        if len(powder_ids) != len(set(powder_ids)):
+            raise serializers.ValidationError(
+                "Duplicate powders are not allowed in the palette."
+            )
+
+        # Only powders owned by the authenticated user are eligible.
+        powders = Powder.objects.filter(
+            owner=self.context["request"].user,
+            id__in=powder_ids,
+        )
+
+        if powders.count() != len(powder_ids):
+            raise serializers.ValidationError(
+                "One or more selected powders are unavailable."
+            )
+
+        # Reuse the same plan validator used for Gemini responses.
+        preferences = {
+            "palette_size": len(powder_ids),
+        }
+
+        eligible_powders = [
+            {"id": powder.id}
+            for powder in powders
+        ]
+
+        try:
+            validated_plan = validate_design_plan(
+                plan=plan,
+                preferences=preferences,
+                powders=eligible_powders,
+            )
+        except GeminiGenerationError as exc:
+            raise serializers.ValidationError(str(exc))
+
+        # Keep the validated plan and the corresponding owned powders.
+        self._validated_powders = list(powders)
+
+        return validated_plan
+
+    @transaction.atomic
+    def create(self, validated_data):
+        plan = validated_data.pop("generated_plan")
+        powders = self._validated_powders
+
+        finishing_tips = "\n".join(
+            f"- {tip}" for tip in plan["finishing_tips"]
+        )
+
+        instructions = (
+            f"{plan['concept']}\n\n"
+            f"Finishing tips:\n{finishing_tips}"
+        )
+
+        design = Design.objects.create(
+            owner=self.context["request"].user,
+            title=plan["title"],
+            source="ai",
+            style=validated_data["style"],
+            nail_shape=validated_data.get("nail_shape", ""),
+            instructions=instructions,
+            generated_plan=plan,
+            status="idea",
+        )
+
+        design.powders.set(powders)
+
+        return design
 
 class PowderPhotoSerializer(serializers.ModelSerializer):
     powder = serializers.PrimaryKeyRelatedField(

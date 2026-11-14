@@ -271,6 +271,7 @@ export interface Design {
   primary_photo: string | null;
   created_at: string;
   updated_at: string;
+  generated_plan?: GeneratedDesignPlan | null;
 }
 
 export interface DesignPhoto {
@@ -297,6 +298,94 @@ export type DesignInput = Omit<
   "id" | "photos" | "primary_photo" | "created_at" | "updated_at"
 >;
 
+export interface GeneratedDesignPaletteItem {
+  powder_id: number;
+  role: string;
+  reason: string;
+}
+
+export interface GeneratedDesignNail {
+  finger: "thumb" | "index" | "middle" | "ring" | "pinky";
+  powder_ids: number[];
+  technique:
+    | "solid"
+    | "french"
+    | "ombre"
+    | "glitter"
+    | "chrome"
+    | "shimmer"
+    | "accent";
+  pattern:
+    | "solid"
+    | "french_tip"
+    | "gradient"
+    | "dots"
+    | "stripes"
+    | "floral"
+    | "glitter"
+    | "chrome"
+    | "abstract";
+  description: string;
+}
+
+export interface GeneratedDesignPlan {
+  title: string;
+  concept: string;
+  palette: GeneratedDesignPaletteItem[];
+  nails: GeneratedDesignNail[];
+  finishing_tips: string[];
+}
+
+export interface GeneratedPalettePowder {
+  id: number;
+  name: string;
+  brand: string;
+  hex_colour: string;
+  colour_family: string;
+  finish: string;
+  intensity: string;
+  undertone: string;
+  coverage: string;
+}
+
+export interface GenerateDesignRequest {
+  colour_mode: "any" | "underused" | "selected";
+  selected_powder_ids?: number[];
+  finishes?: string[];
+  colour_families?: string[];
+  undertones?: string[];
+  favourites_only?: boolean;
+  palette_size: number;
+  style:
+    | "minimalist"
+    | "romantic_coquette"
+    | "gothic_witchy"
+    | "elegant"
+    | "bold_maximalist"
+    | "seasonal";
+  complexity: "low" | "medium" | "high";
+  occasion?: "everyday" | "party_event" | "seasonal";
+  nail_shape?: string;
+  nail_length?: string;
+  preferences?: string;
+}
+
+export interface GenerateDesignResponse {
+  message: string;
+  design: GeneratedDesignPlan;
+  palette_powders: GeneratedPalettePowder[];
+  selection_summary: {
+    total_matching: number;
+    total_eligible: number;
+    excluded_missing_or_invalid_hex: number;
+  };
+}
+
+export interface SaveGeneratedDesignRequest {
+  generated_plan: GeneratedDesignPlan;
+  style: GenerateDesignRequest["style"];
+  nail_shape?: string;
+}
 // ============================================================
 // Tags
 // ============================================================
@@ -945,6 +1034,66 @@ export async function deleteDesign(
   if (!response.ok) {
     throw new Error("Could not delete this design.");
   }
+}
+
+export async function generateDesign(
+  accessToken: string,
+  preferences: GenerateDesignRequest
+): Promise<GenerateDesignResponse> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/generate/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(preferences),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+
+    throw new Error(
+      typeof errorData.detail === "string"
+        ? errorData.detail
+        : JSON.stringify(errorData)
+    );
+  }
+
+  return response.json();
+}
+
+export async function saveGeneratedDesign(
+  accessToken: string,
+  designData: SaveGeneratedDesignRequest
+): Promise<Design> {
+  const response = await authenticatedFetch(
+    accessToken,
+    `${API_BASE_URL}/designs/save-generated/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(designData),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+
+    throw new Error(
+      typeof errorData.detail === "string"
+        ? errorData.detail
+        : JSON.stringify(errorData)
+    );
+  }
+
+  const data = await response.json();
+
+  return data.design;
 }
 
 // ============================================================

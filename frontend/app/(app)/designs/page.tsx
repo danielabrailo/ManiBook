@@ -223,6 +223,13 @@ export default function DesignsPage() {
             </button>
 
             <Link
+              href="/designs/generate"
+              className="inline-flex items-center gap-2 rounded-lg border border-neon bg-neon/10 px-4 py-2 text-center text-sm font-medium text-lavender transition hover:bg-neon/20"
+            >
+              <span aria-hidden="true">✧</span>
+              Generate with AI
+            </Link>
+            <Link
               href="/designs/new"
               className="inline-block rounded-lg bg-berry px-4 py-2 text-center text-sm font-medium text-white hover:bg-berry-dark"
             >

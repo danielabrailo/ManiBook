@@ -265,6 +265,11 @@ class Design(models.Model):
     style = models.CharField(max_length=50, blank=True)
     nail_shape = models.CharField(max_length=20, blank=True)
     instructions = models.TextField(blank=True)
+    generated_plan = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+    )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.IDEA
     )

@@ -1,4 +1,5 @@
 from rest_framework.routers import DefaultRouter
+from django.urls import path
 from .views import (
     PowderViewSet,
     PowderPhotoViewSet,
@@ -6,7 +7,9 @@ from .views import (
     ManicurePhotoViewSet,
     TagViewSet,
     DesignViewSet,
-    DesignPhotoViewSet
+    DesignPhotoViewSet,
+    GenerateDesignView,
+    SaveGeneratedDesignView
 )
 
 router = DefaultRouter()
@@ -23,4 +26,15 @@ router.register("tags", TagViewSet, basename="tag")
 router.register("designs", DesignViewSet, basename="design")
 router.register("design-photos", DesignPhotoViewSet, basename="design-photo")
 
-urlpatterns = router.urls
+urlpatterns = [
+    path(
+        "designs/generate/",
+        GenerateDesignView.as_view(),
+        name="generate-design",
+    ),
+    path(
+        "designs/save-generated/",
+        SaveGeneratedDesignView.as_view(),
+        name="save-generated-design",
+    ),
+] + router.urls

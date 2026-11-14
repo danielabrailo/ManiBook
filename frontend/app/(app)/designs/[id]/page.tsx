@@ -774,15 +774,166 @@ export default function DesignDetailPage() {
               )}
             </section>
 
-            {/* Instructions */}
-            {design.instructions && (
-              <section className="rounded-2xl border border-border bg-surface p-6">
-                <h2 className="text-lg font-semibold">Instructions & notes</h2>
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-text-secondary">
-                  {design.instructions}
-                </p>
+            {/* AI-generated design plan */}
+            {design.source === "ai" && design.generated_plan && (
+              <section className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+                <h2 className="text-lg font-semibold">
+                  AI-generated design plan
+                </h2>
+
+                {/* Concept */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-lavender">
+                    Design concept
+                  </h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-text-secondary">
+                    {design.generated_plan.concept}
+                  </p>
+                </div>
+
+                {/* Palette */}
+                <div className="mt-6">
+                  <h3 className="text-sm font-medium text-lavender">
+                    Colour palette
+                  </h3>
+
+                  <div className="mt-3 space-y-3">
+                    {design.generated_plan.palette.map((item) => {
+                      const powder = selectedPowders.find(
+                        (p) => p.id === item.powder_id
+                      );
+
+                      return (
+                        <div
+                          key={item.powder_id}
+                          className="flex gap-3 rounded-xl border border-border bg-surface-elevated p-3"
+                        >
+                          <div
+                            className="h-11 w-11 shrink-0 rounded-lg border border-border"
+                            style={{
+                              backgroundColor: powder?.hex_colour || "#777777",
+                            }}
+                          />
+
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-text">
+                              {powder?.name || `Powder #${item.powder_id}`}
+                            </p>
+
+                            {powder?.brand && (
+                              <p className="text-xs text-muted">
+                                {powder.brand}
+                              </p>
+                            )}
+
+                            <p className="mt-1 text-xs text-lavender">
+                              {formatChoice(item.role)}
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-text-secondary">
+                              {item.reason}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Nail-by-nail instructions */}
+                <div className="mt-6">
+                  <h3 className="text-sm font-medium text-lavender">
+                    Nail-by-nail instructions
+                  </h3>
+
+                  <div className="mt-3 space-y-3">
+                    {design.generated_plan.nails.map((nail) => {
+                      const nailPowders = nail.powder_ids.map((id) =>
+                        selectedPowders.find((powder) => powder.id === id)
+                      );
+
+                      return (
+                        <div
+                          key={nail.finger}
+                          className="rounded-xl border border-border bg-surface-elevated p-4"
+                        >
+                          <h4 className="font-medium text-text">
+                            {formatChoice(nail.finger)}
+                          </h4>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full border border-border-strong px-2.5 py-1 text-xs text-lavender">
+                              {formatChoice(nail.technique)}
+                            </span>
+
+                            <span className="rounded-full border border-border-strong px-2.5 py-1 text-xs text-text-secondary">
+                              {formatChoice(nail.pattern)}
+                            </span>
+                          </div>
+
+                          <div className="mt-3">
+                            <p className="text-xs font-medium text-muted">
+                              Powders used
+                            </p>
+
+                            <p className="mt-1 text-sm text-text-secondary">
+                              {nailPowders
+                                .map(
+                                  (powder, index) =>
+                                    powder?.name ||
+                                    `Powder #${nail.powder_ids[index]}`
+                                )
+                                .join(", ")}
+                            </p>
+                          </div>
+
+                          <p className="mt-3 text-sm leading-6 text-text-secondary">
+                            {nail.description}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Finishing tips */}
+                {design.generated_plan.finishing_tips.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium text-lavender">
+                      Finishing tips
+                    </h3>
+
+                    <ul className="mt-3 space-y-2">
+                      {design.generated_plan.finishing_tips.map(
+                        (tip, index) => (
+                          <li
+                            key={index}
+                            className="flex gap-3 text-sm leading-6 text-text-secondary"
+                          >
+                            <span className="text-blush">✧</span>
+                            <span>{tip}</span>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
               </section>
             )}
+
+            {/* General instructions and notes for non-AI designs,
+    or older AI designs without a structured plan */}
+            {(design.source !== "ai" || !design.generated_plan) &&
+              design.instructions && (
+                <section className="rounded-2xl border border-border bg-surface p-6">
+                  <h2 className="text-lg font-semibold">
+                    Instructions & notes
+                  </h2>
+                  <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-text-secondary">
+                    {design.instructions}
+                  </p>
+                </section>
+              )}
 
             {/* Timestamps */}
             <section className="rounded-2xl border border-border bg-surface p-6">
